@@ -11,6 +11,8 @@ public:
     static constexpr const char* extension = ".hkpreset";
 
     void refresh();                               // relit le dossier utilisateur
+    static void installFactoryPack();             // installe le pack integre (une seule fois par version)
+    static int  importFrom (const juce::File& source); // dossier, .zip ou .hkpreset -> nb de presets ajoutes
     int  getNumPresets() const;
     int  getNumFactory() const;
     juce::String getPresetName (int index) const;

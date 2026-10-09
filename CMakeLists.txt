@@ -33,6 +33,9 @@ juce_add_plugin(HomeKeys
 
 juce_generate_juce_header(HomeKeys)
 
+# Pack de presets integre au plugin (installe automatiquement au premier lancement)
+juce_add_binary_data(HomeKeysData SOURCES Resources/HomeKeyPresets.zip)
+
 target_sources(HomeKeys PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
@@ -49,6 +52,7 @@ target_link_libraries(HomeKeys
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        HomeKeysData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

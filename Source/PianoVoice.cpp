@@ -6,9 +6,9 @@ static const TypeProfile profiles[] =
 {
     /* Doux       */ { 1.85f, 0.135f, 0.6f, 0.85f, 0.11f, 0.55f, 900.f,  0.00f, 1.0f, 3.0f, 0.6f, 1.0f, 0.00f,  3800.f, 0.15f, 0.55f, 1.25f },
     /* Grave      */ { 1.45f, 0.120f, 0.9f, 1.45f, 0.07f, 0.25f, 1800.f, 0.10f, 0.5f, 3.0f, 0.9f, 1.0f, 0.40f,  7500.f, 0.10f, 0.50f, 1.05f },
-    /* Orchestre  */ { 1.05f, 0.118f, 1.2f, 1.15f, 0.06f, 0.30f, 3500.f, 0.45f, 1.0f, 6.0f, 0.55f, 0.0f, 0.05f, 16000.f, 0.20f, 0.35f, 0.90f },
-    /* Cinematique*/ { 1.35f, 0.125f, 1.0f, 1.35f, 0.08f, 0.20f, 2000.f, 0.35f, 0.5f, 4.0f, 1.2f, 0.4f, 0.25f, 11000.f, 0.30f, 0.30f, 0.95f },
-    /* Dreaming   */ { 1.55f, 0.130f, 2.6f, 1.25f, 0.10f, 0.15f, 1500.f, 0.40f, 2.0f, 5.0f, 1.6f, 0.85f, 0.05f,  9000.f, 0.55f, 0.20f, 1.00f },
+    /* Orchestre  */ { 1.05f, 0.118f, 1.2f, 1.15f, 0.06f, 0.30f, 3500.f, 0.45f, 1.0f, 3.2f, 0.85f, 0.15f, 0.05f, 16000.f, 0.20f, 0.35f, 0.90f },
+    /* Cinematique*/ { 1.35f, 0.125f, 1.0f, 1.35f, 0.08f, 0.20f, 2000.f, 0.35f, 0.5f, 2.6f, 1.2f, 0.4f, 0.25f, 11000.f, 0.30f, 0.30f, 0.95f },
+    /* Dreaming   */ { 1.55f, 0.130f, 2.6f, 1.25f, 0.10f, 0.15f, 1500.f, 0.40f, 2.0f, 3.2f, 1.6f, 0.85f, 0.05f,  9000.f, 0.55f, 0.20f, 1.00f },
 };
 
 const TypeProfile& getProfile (PianoType t)
@@ -51,7 +51,7 @@ void PianoVoice::startNote (int midiNote, float velocity, juce::SynthesiserSound
     // Accordage "stretch" comme un vrai piano (aigus legerement hauts, graves legerement bas)
     const float octFrom69 = (n - 69.0f) / 12.0f;
     const float stretchCents = 1.2f * octFrom69 * std::abs (octFrom69);
-    const double f0 = 440.0 * std::pow (2.0, (n - 69.0) / 12.0 + stretchCents / 1200.0);
+    const double f0 = 440.0 * std::pow (2.0, (n - 69.0) / 12.0 + (stretchCents + params.fine.load()) / 1200.0);
 
     // Inharmonicite (cordes plus raides dans les aigus)
     const double B = 0.00006 * std::pow (2.0, (n - 48.0) / 14.0);
@@ -60,13 +60,13 @@ void PianoVoice::startNote (int midiNote, float velocity, juce::SynthesiserSound
     const float tilt = juce::jlimit (0.55f, 3.0f, prof.tilt - tone * 0.6f - (vel - 0.5f) * 0.7f);
 
     // Duree de resonance selon la hauteur
-    const double baseT60 = juce::jlimit (0.9, 26.0, 20.0 * std::pow (2.0, -(n - 21.0) / 20.0)) * prof.sustainMul;
+    const double baseT60 = juce::jlimit (0.9, 26.0, 20.0 * std::pow (2.0, -(n - 21.0) / 20.0)) * prof.sustainMul * params.decayMul.load();
 
     // Panoramique selon la touche (comme assis devant le piano)
     const float keyPan = juce::jlimit (-1.0f, 1.0f, (n - 64.0f) / 44.0f) * width * 0.6f;
 
     const int partials = juce::jlimit (1, maxPartials, (int) ((0.45 * sr) / f0));
-    const float detune = prof.detuneCents * (0.8f + 0.4f * rng.nextFloat());
+    const float detune = prof.detuneCents * params.unison.load() * (0.8f + 0.4f * rng.nextFloat());
 
     numOsc = 0;
     double energy = 0.0;
@@ -122,12 +122,12 @@ void PianoVoice::startNote (int midiNote, float velocity, juce::SynthesiserSound
         subC = 1.0f; subS = 0.0f;
         subCw = (float) std::cos (w); subSw = (float) std::sin (w);
         const float lowWeight = juce::jlimit (0.0f, 1.0f, (72.0f - n) / 40.0f);
-        subAmp = prof.subAmount * lowWeight * 0.20f;
+        subAmp = (prof.subAmount + params.sub.load()) * lowWeight * 0.20f;
         subDec = decayCoef (baseT60 * 0.7, sr);
     }
 
     // Bruit du marteau / feutre
-    noiseAmp = prof.noise * vel * vel * 0.10f * (1.0f + juce::jmax (0.0f, tone) * 0.5f);
+    noiseAmp = prof.noise * params.hammer.load() * vel * vel * 0.10f * (1.0f + juce::jmax (0.0f, tone) * 0.5f);
     noiseDec = decayCoef (0.035 + (1.0 - vel) * 0.02, sr);
     const float nc = juce::jmin (prof.noiseCutoff * (0.7f + vel * 0.6f) * (1.0f + (n - 60.0f) / 60.0f), (float) sr * 0.4f);
     noiseCoef   = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * juce::jmax (80.0f, nc) / (float) sr);
@@ -142,8 +142,8 @@ void PianoVoice::startNote (int midiNote, float velocity, juce::SynthesiserSound
     padRelCoef = 1.0f;
     {
         const double pf = f0 * prof.padOctave;
-        const double dets[3] = { -7.0, 0.0, 7.0 };
-        for (int i = 0; i < 3; ++i)
+        const double dets[5] = { -6.0, -2.5, 0.0, 2.5, 6.0 }; // ensemble doux
+        for (int i = 0; i < 5; ++i)
         {
             padInc[(size_t) i] = pf * std::pow (2.0, dets[i] / 1200.0) / sr;
             padPhase[(size_t) i] = rng.nextDouble();
@@ -160,7 +160,7 @@ void PianoVoice::startNote (int midiNote, float velocity, juce::SynthesiserSound
     voiceGain = ((1.0f - sens) * 0.75f + sens * std::pow (vel, 1.7f)) * prof.gain;
 
     attackRamp = 0.0f;
-    attackInc  = 1.0f / (0.0015f * (float) sr);
+    attackInc  = 1.0f / (juce::jmax (0.0015f, params.attack.load()) * (float) sr);
     releasing = false;
     releaseCoef = 1.0f;
     renormCounter = 0;
@@ -238,15 +238,19 @@ void PianoVoice::renderNextBlock (juce::AudioBuffer<float>& out, int start, int 
             else             padLevel *= padRelCoef;
 
             float pl = 0.0f, pr = 0.0f;
-            for (int p = 0; p < 3; ++p)
+            static const float panL5[5] = { 1.0f, 0.8f, 0.6f, 0.35f, 0.15f };
+            for (int p = 0; p < 5; ++p)
             {
                 double& ph = padPhase[(size_t) p];
                 const double dt = padInc[(size_t) p];
                 const float saw  = (float) (2.0 * ph - 1.0) - polyBlep (ph, dt);
+                const float tri  = 2.0f * std::abs (2.0f * (float) ph - 1.0f) - 1.0f;
                 const float sine = std::sin ((float) ph * juce::MathConstants<float>::twoPi);
-                const float v = saw * (1.0f - padSine) + sine * padSine;
+                // cordes : melange scie + triangle (moins agressif), nappes : sinus
+                const float v = (saw * 0.5f + tri * 0.5f) * (1.0f - padSine) + sine * padSine;
                 ph += dt; if (ph >= 1.0) ph -= 1.0;
-                if (p == 0) pl += v; else if (p == 2) pr += v; else { pl += v * 0.7f; pr += v * 0.7f; }
+                pl += v * panL5[p] * 0.55f;
+                pr += v * panL5[4 - p] * 0.55f;
             }
             padLp1L += padCoef * (pl - padLp1L); padLp2L += padCoef * (padLp1L - padLp2L);
             padLp1R += padCoef * (pr - padLp1R); padLp2R += padCoef * (padLp1R - padLp2R);

@@ -1,25 +1,4 @@
-HOMEKEY PRESET - pack de presets pour HomeKeys
-================================================
-
-INSTALLATION
-1. Ouvre HomeKeys et clique sur le bouton DOSSIER (en haut a droite).
-   (ou va dans  Documents\HomeKeys\Presets )
-2. Copie le dossier "HomeKey Preset" entier dedans.
-3. Ferme / rouvre le menu des presets : chaque theme apparait avec son titre.
-
-LES THEMES
-01 Douceur ......... piano feutre, calme, intime
-02 Love ............ RnB, love, love trap, mariage
-03 Trap ............ melodic, dark, bells, pluggnb, rage
-04 Drill ........... UK, NY, sombre
-05 Lo-Fi ........... cassette, vinyle, VHS, chill
-06 Cinema .......... epique, film, thriller
-07 Dream ........... aerien, shimmer, reve
-08 Gospel & Soul ... eglise, neo soul, jazz
-09 Afro & Pop ...... amapiano, radio, afro
-10 Dark & Alien .... experimental, glitch, abysse
-11 Music Box & Bells boite a musique, cristal
-
-ASTUCE : la rangee GRAIN (Drive, Wow, Crush, Vinyl) donne le "grain".
-Monte VINYL pour plus de craquements, WOW pour l'effet cassette.
-Sauvegarde tes variations avec SAVE : elles vont dans "MES PRESETS".
+HOMEKEY PRESET - pack officiel HomeKeys v2
+Ce pack s'installe TOUT SEUL au premier lancement de HomeKeys v2.
+Pour ajouter d'autres presets : bouton IMPORT dans HomeKeys.
+Le style est indique entre crochets : [Trap], [Love], [Lo-Fi]...

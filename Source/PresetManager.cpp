@@ -1,4 +1,5 @@
 #include "PresetManager.h"
+#include "BinaryData.h"
 
 //                                             type  vol   tone  vel   rel   layer chorus reverb size width
 const std::vector<PresetManager::Factory>& PresetManager::factory()
@@ -31,7 +32,56 @@ const std::vector<PresetManager::Factory>& PresetManager::factory()
 
 PresetManager::PresetManager (juce::AudioProcessorValueTreeState& s) : apvts (s)
 {
+    installFactoryPack();
     refresh();
+}
+
+void PresetManager::installFactoryPack()
+{
+    const auto root = getUserFolder();
+    const auto marker = root.getChildFile (".homekeys_pack_v3");
+    if (marker.existsAsFile())
+        return;
+
+    // remplace l'ancienne version du pack (les presets perso ne sont pas touches)
+    root.getChildFile ("HomeKey Preset").deleteRecursively();
+    juce::ZipFile zip (new juce::MemoryInputStream (BinaryData::HomeKeyPresets_zip, BinaryData::HomeKeyPresets_zipSize, false), true);
+    if (zip.uncompressTo (root, true).wasOk())
+        marker.replaceWithText ("HomeKeys pack v3");
+}
+
+int PresetManager::importFrom (const juce::File& src)
+{
+    const auto root = getUserFolder();
+    const auto pattern = juce::String ("*") + extension;
+
+    if (src.isDirectory())
+    {
+        auto dest = root.getChildFile (src.getFileName());
+        if (dest == src) return 0;
+        int n = 0;
+        for (auto& f : src.findChildFiles (juce::File::findFiles, true, pattern))
+        {
+            auto target = dest.getChildFile (f.getRelativePathFrom (src));
+            target.getParentDirectory().createDirectory();
+            if (f.copyFileTo (target)) ++n;
+        }
+        return n;
+    }
+    if (src.hasFileExtension ("zip"))
+    {
+        juce::ZipFile zip (src);
+        int n = 0;
+        for (int i = 0; i < zip.getNumEntries(); ++i)
+            if (auto* e = zip.getEntry (i))
+                if (e->filename.endsWithIgnoreCase (extension)) ++n;
+        auto dest = root.getChildFile (src.getFileNameWithoutExtension());
+        dest.createDirectory();
+        return zip.uncompressTo (dest, true).wasOk() ? n : 0;
+    }
+    if (src.hasFileExtension (juce::String (extension).substring (1)))
+        return src.copyFileTo (root.getChildFile (src.getFileName())) ? 1 : 0;
+    return 0;
 }
 
 juce::File PresetManager::getUserFolder()

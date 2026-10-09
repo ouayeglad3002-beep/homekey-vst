@@ -44,6 +44,14 @@ public:
     std::atomic<int> scopeWritePos { 0 };
     std::atomic<float> outputLevel { 0.0f };
 
+    // Constellation (pour l'affichage)
+    static constexpr int numStars = 8;
+    std::array<std::atomic<float>, numStars> starMod {};
+    // Chop actif (-1 = aucun) pour l'affichage
+    std::atomic<int> chopActive { -1 };
+    static juce::StringArray chopNames() { return { "GATE", "PATTERN", "STUTTER", "REVERSE", "TAPE STOP", "HALF SPEED", "OCTAVE UP", "GLITCH" }; }
+    static constexpr int chopKeyLow = 12; // notes MIDI 12..19 = declencheurs de chop
+
 private:
     EngineParams engine;
     juce::Synthesiser synth;
@@ -62,6 +70,34 @@ private:
     float hissLp = 0, crackleEnv = 0, crackleLp = 0, crackleSign = 1;
     juce::Random grainRng;
     void processGrain (juce::AudioBuffer<float>&, int n);
+    void processChop (juce::AudioBuffer<float>&, int n, double ppqStart, double samplesPerBeat);
+    void processDelay (juce::AudioBuffer<float>&, int n, double samplesPerBeat);
+    void updateConstellation (int n);
+
+    // valeurs effectives (parametres + constellation)
+    float effTone = 0, effDrive = 0, effWow = 0, effCrush = 0, effChorus = 0, effReverb = 0, effWidth = 0.7f, effLayer = 0.5f, effCut = 20000;
+    std::array<double, 8> starPhase {};
+    std::array<float, 8> starWalk {}, starWalkTarget {};
+    double sharedPhase = 0;
+
+    // Filtre synth
+    juce::dsp::StateVariableTPTFilter<float> synthFilter;
+    juce::SmoothedValue<float> synthCut;
+
+    // Delay
+    juce::AudioBuffer<float> delayBuf;
+    int delayWrite = 0;
+    float delayLpL = 0, delayLpR = 0;
+
+    // Chop
+    juce::AudioBuffer<float> chopBuf;
+    int chopWrite = 0;
+    long long lastSlice = -1, lastBeat = -1, lastCycle = -1;
+    int sliceStartWrite = 0, beatAnchor = 0, glitchMode = 0;
+    double tapeRead = 0, halfRead = 0, internalBeats = 0;
+    float chopGain = 0;
+    int keyChop = -1;
+    juce::MidiBuffer filteredMidi;
     void addVinyl (juce::AudioBuffer<float>&, int n);
 
     juce::SmoothedValue<float> volume;

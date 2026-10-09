@@ -94,9 +94,10 @@ void AlienLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w,
 void AlienLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&, bool over, bool down)
 {
     auto r = b.getLocalBounds().toFloat().reduced (1.0f);
-    g.setColour (down ? accent.withAlpha (0.25f) : (over ? juce::Colour (0xff13202a) : panel));
+    const bool on = b.getToggleState();
+    g.setColour (down || on ? accent.withAlpha (on ? 0.22f : 0.25f) : (over ? juce::Colour (0xff13202a) : panel));
     g.fillRoundedRectangle (r, 6.0f);
-    g.setColour (over ? accent : edge.brighter (0.2f));
+    g.setColour (over || on ? accent : edge.brighter (0.2f));
     g.drawRoundedRectangle (r, 6.0f, 1.2f);
 }
 
@@ -332,50 +333,325 @@ void GrainDisc::paint (juce::Graphics& g)
 }
 
 //==============================================================================
+// CONSTELLATION (LFO aleatoire coherent)
+//==============================================================================
+static const char* starTargets[8] = { "TONE", "FILTRE", "DRIVE", "WOW", "CRUSH", "CHORUS", "REVERB", "ESPACE" };
+
+juce::Point<float> ConstellationView::starPos (int i) const
+{
+    auto f = field();
+    const float x = proc.apvts.getRawParameterValue ("s" + juce::String (i) + "x")->load();
+    const float y = proc.apvts.getRawParameterValue ("s" + juce::String (i) + "y")->load();
+    return { f.getX() + x * f.getWidth(), f.getY() + y * f.getHeight() };
+}
+
+void ConstellationView::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    g.setColour (juce::Colour (0xff03050a));
+    g.fillRoundedRectangle (r, 14.0f);
+
+    // champ d'etoiles
+    juce::Random rnd (777);
+    for (int i = 0; i < 140; ++i)
+    {
+        const float x = r.getX() + rnd.nextFloat() * r.getWidth();
+        const float y = r.getY() + rnd.nextFloat() * r.getHeight();
+        const float tw = 0.3f + 0.3f * std::sin (phase * (0.5f + rnd.nextFloat()) + (float) i);
+        g.setColour (juce::Colours::white.withAlpha (juce::jlimit (0.03f, 0.5f, tw * rnd.nextFloat())));
+        g.fillEllipse (x, y, 1.4f, 1.4f);
+    }
+
+    // centre = aucune modulation ; plus une etoile est loin, plus elle module
+    const auto c = field().getCentre();
+    for (int k = 1; k <= 3; ++k)
+    {
+        const float rr = field().getHeight() * 0.5f * (float) k / 3.0f;
+        g.setColour (accent.withAlpha (0.06f));
+        g.drawEllipse (c.x - rr, c.y - rr, rr * 2, rr * 2, 1.0f);
+    }
+    g.setColour (accent.withAlpha (0.25f));
+    g.fillEllipse (c.x - 3, c.y - 3, 6, 6);
+
+    // lignes de la constellation
+    juce::Path lines;
+    for (int i = 0; i < 8; ++i)
+    {
+        const auto p = starPos (i);
+        if (i == 0) lines.startNewSubPath (p); else lines.lineTo (p);
+    }
+    lines.closeSubPath();
+    g.setColour (accent.withAlpha (0.10f));
+    g.strokePath (lines, juce::PathStrokeType (6.0f));
+    g.setColour (accent.withAlpha (0.45f));
+    g.strokePath (lines, juce::PathStrokeType (1.2f));
+
+    // etoiles
+    for (int i = 0; i < 8; ++i)
+    {
+        const auto p = starPos (i);
+        const float m = proc.starMod[(size_t) i].load();
+        const float size = 7.0f + 9.0f * std::abs (m);
+        g.setGradientFill (juce::ColourGradient (accent.withAlpha (0.55f + 0.45f * std::abs (m)), p,
+                                                 accent.withAlpha (0.0f), p.translated (size * 2.6f, 0), true));
+        g.fillEllipse (p.x - size * 2.6f, p.y - size * 2.6f, size * 5.2f, size * 5.2f);
+        g.setColour (juce::Colours::white.withAlpha (0.9f));
+        g.fillEllipse (p.x - size * 0.35f, p.y - size * 0.35f, size * 0.7f, size * 0.7f);
+        // rayons
+        g.setColour (accent.withAlpha (0.6f));
+        g.drawLine (p.x - size, p.y, p.x + size, p.y, 1.0f);
+        g.drawLine (p.x, p.y - size, p.x, p.y + size, 1.0f);
+        g.setColour (AlienColours::text.withAlpha (i == dragging ? 1.0f : 0.6f));
+        g.setFont (alienFont (10.5f, true));
+        g.drawText (starTargets[i], (int) p.x - 40, (int) p.y + 12, 80, 14, juce::Justification::centred);
+    }
+
+    g.setColour (AlienColours::dim);
+    g.setFont (alienFont (11.0f));
+    g.drawText ("glisse les etoiles : loin du centre = plus de mouvement, autour du centre = vitesse",
+                r.reduced (16.0f, 8.0f), juce::Justification::bottomLeft);
+    g.setColour (AlienColours::edge);
+    g.drawRoundedRectangle (r.reduced (0.5f), 14.0f, 1.0f);
+}
+
+void ConstellationView::mouseDown (const juce::MouseEvent& e)
+{
+    dragging = -1;
+    float best = 22.0f;
+    for (int i = 0; i < 8; ++i)
+    {
+        const float d = starPos (i).getDistanceFrom (e.position);
+        if (d < best) { best = d; dragging = i; }
+    }
+    if (dragging >= 0)
+        for (auto axis : { "x", "y" })
+            if (auto* prm = proc.apvts.getParameter ("s" + juce::String (dragging) + axis))
+                prm->beginChangeGesture();
+}
+
+void ConstellationView::mouseDrag (const juce::MouseEvent& e)
+{
+    if (dragging < 0) return;
+    auto f = field();
+    const float x = juce::jlimit (0.0f, 1.0f, (e.position.x - f.getX()) / f.getWidth());
+    const float y = juce::jlimit (0.0f, 1.0f, (e.position.y - f.getY()) / f.getHeight());
+    proc.apvts.getParameter ("s" + juce::String (dragging) + "x")->setValueNotifyingHost (x);
+    proc.apvts.getParameter ("s" + juce::String (dragging) + "y")->setValueNotifyingHost (y);
+    repaint();
+}
+
+void ConstellationView::mouseUp (const juce::MouseEvent&)
+{
+    if (dragging >= 0)
+        for (auto axis : { "x", "y" })
+            if (auto* prm = proc.apvts.getParameter ("s" + juce::String (dragging) + axis))
+                prm->endChangeGesture();
+    dragging = -1;
+    repaint();
+}
+
+void ConstellationView::randomize()
+{
+    // nouvelle forme aleatoire mais harmonieuse : angles tries, rayons varies
+    auto& rnd = juce::Random::getSystemRandom();
+    const float start = rnd.nextFloat() * juce::MathConstants<float>::twoPi;
+    for (int i = 0; i < 8; ++i)
+    {
+        const float a = start + juce::MathConstants<float>::twoPi * ((float) i + 0.6f * rnd.nextFloat()) / 8.0f;
+        const float rad = 0.10f + 0.36f * rnd.nextFloat();
+        const float x = juce::jlimit (0.02f, 0.98f, 0.5f + rad * std::cos (a));
+        const float y = juce::jlimit (0.02f, 0.98f, 0.5f + rad * std::sin (a));
+        proc.apvts.getParameter ("s" + juce::String (i) + "x")->setValueNotifyingHost (x);
+        proc.apvts.getParameter ("s" + juce::String (i) + "y")->setValueNotifyingHost (y);
+    }
+    repaint();
+}
+
+//==============================================================================
+// PADS DE CHOP
+//==============================================================================
+juce::Rectangle<float> ChopPads::pad (int i) const
+{
+    auto r = getLocalBounds().toFloat();
+    const float w = (r.getWidth() - 3 * 10.0f) / 4.0f, h = (r.getHeight() - 10.0f) / 2.0f;
+    return { (float) (i % 4) * (w + 10.0f), (float) (i / 4) * (h + 10.0f), w, h };
+}
+
+void ChopPads::paint (juce::Graphics& g)
+{
+    const auto names = HomeKeysProcessor::chopNames();
+    const char* keys[8] = { "C1", "C#1", "D1", "D#1", "E1", "F1", "F#1", "G1" };
+    const char* desc[8] = { "coupe le son en rythme", "motif de gate 16 pas", "repete un morceau",
+                            "joue a l'envers", "la bande ralentit", "une octave plus bas",
+                            "une octave plus haut", "melange aleatoire" };
+    const int active = proc.chopActive.load();
+    const int selected = (int) proc.apvts.getRawParameterValue ("choptype")->load();
+    for (int i = 0; i < 8; ++i)
+    {
+        auto r = pad (i).reduced (1.0f);
+        const bool on = (i == active);
+        g.setColour (on ? accent.withAlpha (0.35f) : juce::Colour (0xff0b1116));
+        g.fillRoundedRectangle (r, 10.0f);
+        g.setColour (on ? accent : (i == selected ? accent.withAlpha (0.7f) : AlienColours::edge.brighter (0.3f)));
+        g.drawRoundedRectangle (r, 10.0f, on ? 2.2f : (i == selected ? 1.6f : 1.0f));
+        g.setColour (on ? juce::Colours::white : AlienColours::text);
+        g.setFont (alienFont (15.0f, true));
+        g.drawText (names[i], r.reduced (10.0f, 8.0f), juce::Justification::topLeft);
+        g.setColour (AlienColours::dim);
+        g.setFont (alienFont (10.5f));
+        g.drawText (desc[i], r.reduced (10.0f, 8.0f), juce::Justification::bottomLeft);
+        g.setColour (accent);
+        g.setFont (alienFont (12.0f, true));
+        g.drawText (juce::String ("touche ") + keys[i], r.reduced (10.0f, 8.0f), juce::Justification::topRight);
+    }
+}
+
+void ChopPads::mouseDown (const juce::MouseEvent& e)
+{
+    for (int i = 0; i < 8; ++i)
+        if (pad (i).contains (e.position))
+            if (auto* prm = proc.apvts.getParameter ("choptype"))
+            {
+                prm->beginChangeGesture();
+                prm->setValueNotifyingHost (prm->convertTo0to1 ((float) i));
+                prm->endChangeGesture();
+            }
+    repaint();
+}
+
+//==============================================================================
+// COURBE DU FILTRE
+//==============================================================================
+void FilterView::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    g.setColour (juce::Colour (0xff04070a));
+    g.fillRoundedRectangle (r, 12.0f);
+    const float fc = apvts.getRawParameterValue ("fcut")->load();
+    const float q = 0.5f + apvts.getRawParameterValue ("fres")->load() * 6.0f;
+    const int type = (int) apvts.getRawParameterValue ("ftype")->load();
+    juce::Path curve;
+    auto inner = r.reduced (10.0f, 14.0f);
+    for (int i = 0; i <= 200; ++i)
+    {
+        const float f = 20.0f * std::pow (1000.0f, (float) i / 200.0f);
+        const float w = f / fc;
+        // reponse d'un filtre 2 poles
+        const float re = 1.0f - w * w, im = w / q;
+        const float den = std::sqrt (re * re + im * im);
+        float mag = type == 0 ? 1.0f / den : type == 1 ? (w / q) / den : (w * w) / den;
+        const float db = juce::jlimit (-36.0f, 18.0f, juce::Decibels::gainToDecibels (mag));
+        const float x = inner.getX() + inner.getWidth() * (float) i / 200.0f;
+        const float y = inner.getY() + inner.getHeight() * (1.0f - (db + 36.0f) / 54.0f);
+        if (i == 0) curve.startNewSubPath (x, y); else curve.lineTo (x, y);
+    }
+    juce::Path fill (curve);
+    fill.lineTo (inner.getRight(), inner.getBottom()); fill.lineTo (inner.getX(), inner.getBottom()); fill.closeSubPath();
+    g.setColour (accent.withAlpha (0.12f));
+    g.fillPath (fill);
+    g.setColour (accent);
+    g.strokePath (curve, juce::PathStrokeType (2.0f));
+    g.setColour (AlienColours::dim);
+    g.setFont (alienFont (10.5f, true));
+    g.drawText (juce::String ("FILTRE ") + (type == 0 ? "LP" : type == 1 ? "BP" : "HP") + "  " + juce::String ((int) fc) + " Hz",
+                r.reduced (10.0f, 4.0f), juce::Justification::topLeft);
+    g.setColour (AlienColours::edge);
+    g.drawRoundedRectangle (r.reduced (0.5f), 12.0f, 1.0f);
+}
+
+//==============================================================================
 // EDITEUR
 //==============================================================================
+HomeKeysEditor::Knob& HomeKeysEditor::addKnob (const juce::String& id, const juce::String& title, int pg, const juce::String& suffix)
+{
+    auto k = std::make_unique<Knob>();
+    k->page = pg;
+    k->slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    k->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 74, 18);
+    k->slider.setRotaryParameters (juce::MathConstants<float>::pi * 1.2f, juce::MathConstants<float>::pi * 2.8f, true);
+    k->slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colour (0xff1c2a33));
+    k->slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colour (0xff070b0f));
+    k->slider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xffcfe9de));
+    k->slider.setColour (juce::Slider::textBoxHighlightColourId, juce::Colour (0x5539ff8f));
+    addChildComponent (k->slider);
+    k->attach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (proc.apvts, id, k->slider);
+    if (suffix.isNotEmpty()) k->slider.setTextValueSuffix (suffix);
+    k->label.setText (title, juce::dontSendNotification);
+    k->label.setJustificationType (juce::Justification::centred);
+    k->label.setFont (alienFont (12.0f, true));
+    k->label.setColour (juce::Label::textColourId, dim.brighter (0.4f));
+    addChildComponent (k->label);
+    auto& ref = *k;
+    knobById[id] = k.get();
+    knobs.push_back (std::move (k));
+    return ref;
+}
+
+void HomeKeysEditor::placeRow (juce::Rectangle<int> area, const juce::StringArray& ids)
+{
+    const int kw = juce::jmin (104, area.getWidth() / juce::jmax (1, ids.size()));
+    for (auto& id : ids)
+    {
+        auto cell = area.removeFromLeft (kw);
+        if (id.isEmpty()) continue;
+        auto* k = knobById[id];
+        k->label.setBounds (cell.removeFromTop (16));
+        k->slider.setBounds (cell.reduced (8, 0));
+    }
+}
+
 HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
     : AudioProcessorEditor (&p), proc (p), typeSelector (p.apvts), scope (p), grainDisc (p.apvts),
+      constellation (p), chopPads (p), filterView (p.apvts),
       keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel (&lnf);
 
     addAndMakeVisible (typeSelector);
-    addAndMakeVisible (scope);
+    addChildComponent (scope);
+    addChildComponent (grainDisc);
+    addChildComponent (constellation);
+    addChildComponent (chopPads);
+    addChildComponent (filterView);
 
-    addAndMakeVisible (grainDisc);
+    // PAGE 0 : PIANO
+    addKnob ("tone", "TONE", 0);         addKnob ("velocity", "VELOCITY", 0);
+    addKnob ("release", "RELEASE", 0, " s"); addKnob ("layer", "LAYER", 0);
+    addKnob ("width", "WIDTH", 0);       addKnob ("chorus", "CHORUS", 0);
+    addKnob ("reverb", "REVERB", 0);     addKnob ("size", "SIZE", 0);
+    addKnob ("volume", "VOLUME", 0, " dB");
+    addKnob ("octave", "OCTAVE", 0, " oct"); addKnob ("drive", "DRIVE", 0);
+    addKnob ("wow", "WOW", 0);           addKnob ("crush", "CRUSH", 0);
+    addKnob ("vinyl", "VINYL", 0);
+    // PAGE 1 : SYNTH
+    addKnob ("fcut", "CUTOFF", 1);       addKnob ("fres", "RESO", 1);
+    addKnob ("ftype", "TYPE", 1);        addKnob ("attack", "ATTACK", 1);
+    addKnob ("decay", "DECAY", 1);       addKnob ("hammer", "HAMMER", 1);
+    addKnob ("sub", "SUB", 1);           addKnob ("unison", "UNISON", 1);
+    addKnob ("fine", "FINE", 1);
+    addKnob ("dtime", "DELAY", 1);       addKnob ("dfb", "FEEDBACK", 1);
+    addKnob ("dmix", "DLY MIX", 1);
+    // PAGE 2 : CONSTELLATION
+    addKnob ("cdepth", "DEPTH", 2);      addKnob ("crate", "RATE", 2);
+    // PAGE 3 : CHOP
+    addKnob ("choprate", "RATE", 3);     addKnob ("chopmix", "MIX", 3);
 
-    const char* ids[14]    = { "tone", "velocity", "release", "layer", "width", "chorus", "reverb", "size", "volume",
-                               "octave", "drive", "wow", "crush", "vinyl" };
-    const char* titles[14] = { "TONE", "VELOCITY", "RELEASE", "LAYER", "WIDTH", "CHORUS", "REVERB", "SIZE", "VOLUME",
-                               "OCTAVE", "DRIVE", "WOW", "CRUSH", "VINYL" };
-    for (int i = 0; i < 14; ++i)
+    addChildComponent (randomBtn);
+    randomBtn.onClick = [this] { constellation.randomize(); };
+    randomBtn.setTooltip ("Nouvelle constellation aleatoire");
+
+    addChildComponent (chopOn);
+    chopOn.setClickingTogglesState (true);
+    chopAttach = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, "chop", chopOn);
+
+    const char* tabNames[4] = { "PIANO", "SYNTH", "CONSTELLATION", "CHOP" };
+    for (int i = 0; i < 4; ++i)
     {
-        auto& k = knobs[(size_t) i];
-        k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-        k.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 70, 18);
-        k.slider.setRotaryParameters (juce::MathConstants<float>::pi * 1.2f, juce::MathConstants<float>::pi * 2.8f, true);
-        k.slider.setPopupDisplayEnabled (false, false, this);
-        k.slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colour (0xff1c2a33));
-        k.slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colour (0xff070b0f));
-        k.slider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (0xffcfe9de));
-        k.slider.setColour (juce::Slider::textBoxHighlightColourId, juce::Colour (0x5539ff8f));
-        addAndMakeVisible (k.slider);
-        k.attach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (p.apvts, ids[i], k.slider);
-
-        k.label.setText (titles[i], juce::dontSendNotification);
-        k.label.setJustificationType (juce::Justification::centred);
-        k.label.setFont (alienFont (12.0f, true));
-        k.label.setColour (juce::Label::textColourId, dim.brighter (0.4f));
-        addAndMakeVisible (k.label);
+        tabs[(size_t) i].setButtonText (tabNames[i]);
+        tabs[(size_t) i].setClickingTogglesState (false);
+        tabs[(size_t) i].onClick = [this, i] { setPage (i); };
+        addAndMakeVisible (tabs[(size_t) i]);
     }
-    knobs[2].slider.setTextValueSuffix (" s");
-    knobs[8].slider.setTextValueSuffix (" dB");
-    knobs[9].slider.setTextValueSuffix (" oct");
-    knobs[10].slider.setTooltip ("Saturation chaude de bande magnetique");
-    knobs[11].slider.setTooltip ("Ondulation de cassette (pleurage / scintillement)");
-    knobs[12].slider.setTooltip ("Grain numerique lo-fi (bits / echantillonnage)");
-    knobs[13].slider.setTooltip ("Souffle et craquements de vinyle");
 
     // presets
     addAndMakeVisible (presetBox);
@@ -386,11 +662,12 @@ HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
         if (idx >= 0 && idx != proc.presets.getCurrentIndex())
             proc.presets.loadPreset (idx);
     };
-    for (auto* b : { &prevBtn, &nextBtn, &saveBtn, &delBtn, &folderBtn })
+    for (auto* b : { &prevBtn, &nextBtn, &saveBtn, &delBtn, &importBtn, &folderBtn })
         addAndMakeVisible (b);
     prevBtn.onClick = [this] { proc.presets.previous(); refreshPresetBox(); };
     nextBtn.onClick = [this] { proc.presets.next();     refreshPresetBox(); };
     saveBtn.onClick = [this] { showSaveDialog(); };
+    importBtn.onClick = [this] { showImportMenu(); };
     delBtn.onClick  = [this]
     {
         const int idx = proc.presets.getCurrentIndex();
@@ -399,8 +676,7 @@ HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
         refreshPresetBox();
     };
     folderBtn.onClick = [] { PresetManager::getUserFolder().startAsProcess(); };
-    saveBtn.setTooltip ("Sauvegarder le son actuel comme preset HomeKeys");
-    folderBtn.setTooltip ("Ouvrir le dossier des presets (ajoute tes .hkpreset ici)");
+    importBtn.setTooltip ("Ajouter un dossier, un .zip ou des .hkpreset");
 
     // clavier
     keyboard.setAvailableRange (21, 108);
@@ -411,11 +687,10 @@ HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
     keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff070a0d));
     keyboard.setColour (juce::MidiKeyboardComponent::shadowColourId, juce::Colour (0x00000000));
     keyboard.setColour (juce::MidiKeyboardComponent::textLabelColourId, dim);
-    keyboard.setColour (juce::MidiKeyboardComponent::upDownButtonBackgroundColourId, bg1);
-    keyboard.setColour (juce::MidiKeyboardComponent::upDownButtonArrowColourId, acid);
     addAndMakeVisible (keyboard);
 
     setSize (1000, 790);
+    setPage (0);
     refreshPresetBox();
     timerCallback();
     startTimerHz (30);
@@ -425,6 +700,57 @@ HomeKeysEditor::~HomeKeysEditor()
 {
     stopTimer();
     setLookAndFeel (nullptr);
+}
+
+void HomeKeysEditor::setPage (int pg)
+{
+    page = pg;
+    for (auto& k : knobs) { k->slider.setVisible (k->page == pg); k->label.setVisible (k->page == pg); }
+    scope.setVisible (pg == 0);
+    grainDisc.setVisible (pg == 0);
+    filterView.setVisible (pg == 1);
+    constellation.setVisible (pg == 2);
+    randomBtn.setVisible (pg == 2);
+    chopPads.setVisible (pg == 3);
+    chopOn.setVisible (pg == 3);
+    for (int i = 0; i < 4; ++i)
+        tabs[(size_t) i].setToggleState (i == pg, juce::dontSendNotification);
+    resized();
+    repaint();
+}
+
+void HomeKeysEditor::showImportMenu()
+{
+    juce::PopupMenu m;
+    m.addItem (1, "Importer un DOSSIER de presets...");
+    m.addItem (2, "Importer un fichier .zip ou .hkpreset...");
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&importBtn), [this] (int r)
+    {
+        if (r == 0) return;
+        const bool folder = (r == 1);
+        chooser = std::make_unique<juce::FileChooser> (folder ? "Choisis le dossier de presets HomeKeys" : "Choisis un .zip ou des .hkpreset",
+                                                       juce::File::getSpecialLocation (juce::File::userHomeDirectory).getChildFile ("Downloads"),
+                                                       folder ? juce::String() : juce::String ("*.zip;*.hkpreset"));
+        const int flags = juce::FileBrowserComponent::openMode
+                        | (folder ? juce::FileBrowserComponent::canSelectDirectories
+                                  : (juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectMultipleItems));
+        chooser->launchAsync (flags, [this] (const juce::FileChooser& fc)
+        {
+            int added = 0;
+            for (auto& f : fc.getResults())
+                added += PresetManager::importFrom (f);
+            if (fc.getResults().isEmpty()) return;
+            refreshPresetBox();
+            auto opts = juce::MessageBoxOptions()
+                            .withIconType (added > 0 ? juce::MessageBoxIconType::InfoIcon : juce::MessageBoxIconType::WarningIcon)
+                            .withTitle (added > 0 ? "IMPORT REUSSI" : "AUCUN PRESET TROUVE")
+                            .withMessage (added > 0 ? juce::String (added) + " preset(s) ajoute(s) a HomeKeys.\nIls sont dans le menu des presets."
+                                                    : "Ce dossier ne contient aucun fichier .hkpreset.")
+                            .withButton ("OK")
+                            .withAssociatedComponent (this);
+            juce::AlertWindow::showAsync (opts, nullptr);
+        });
+    });
 }
 
 void HomeKeysEditor::refreshPresetBox()
@@ -442,7 +768,7 @@ void HomeKeysEditor::refreshPresetBox()
         if (pm.isFactory (i))
         {
             const int grp = i / 3;
-            if (grp != lastGroup) { presetBox.addSectionHeading (groups[grp]); lastGroup = grp; }
+            if (grp != lastGroup) { presetBox.addSectionHeading ("USINE - " + groups[grp]); lastGroup = grp; }
         }
         else
         {
@@ -469,7 +795,7 @@ void HomeKeysEditor::showSaveDialog()
     dialog = std::make_unique<juce::AlertWindow> ("NOUVEAU PRESET HOMEKEYS",
                                                   "Donne un nom a ton son :", juce::MessageBoxIconType::NoIcon, this);
     dialog->setLookAndFeel (&lnf);
-    auto suggested = proc.presets.getCurrentName().fromLastOccurrenceOf ("- ", false, false).trim();
+    auto suggested = proc.presets.getCurrentName().trim();
     dialog->addTextEditor ("name", suggested.isEmpty() ? "Mon Preset" : suggested + " (mod)");
     dialog->addButton ("SAUVER", 1, juce::KeyPress (juce::KeyPress::returnKey));
     dialog->addButton ("ANNULER", 0, juce::KeyPress (juce::KeyPress::escapeKey));
@@ -491,22 +817,50 @@ void HomeKeysEditor::timerCallback()
     if (type != lastType)
     {
         lastType = type;
-        lnf.accent = forType (type);
-        scope.accent = forType (type);
-        grainDisc.accent = forType (type);
-        keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, forType (type).withAlpha (0.75f));
-        keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, forType (type).withAlpha (0.25f));
+        const auto c = forType (type);
+        lnf.accent = c;
+        scope.accent = grainDisc.accent = constellation.accent = chopPads.accent = filterView.accent = c;
+        keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, c.withAlpha (0.75f));
+        keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, c.withAlpha (0.25f));
         repaint();
     }
 
-    if (proc.presets.getCurrentName() != lastPresetName || proc.presets.getNumPresets() != lastPresetCount)
+    // le dossier de presets est relu toutes les 2 s : un dossier ajoute apparait tout seul
+    if (++refreshTick >= 60)
+    {
+        refreshTick = 0;
+        proc.presets.refresh();
+        if (proc.presets.getNumPresets() != lastPresetCount) refreshPresetBox();
+    }
+    if (proc.presets.getCurrentName() != lastPresetName)
         refreshPresetBox();
 
-    grainDisc.angle += 0.06f + 0.10f * proc.apvts.getRawParameterValue ("wow")->load();
-    grainDisc.repaint();
+    chopOn.setButtonText (chopOn.getToggleState() ? "CHOP ON" : "CHOP OFF");
+
     typeSelector.phase = t;
     typeSelector.repaint();
-    scope.repaint();
+    if (page == 0) { scope.repaint(); grainDisc.angle += 0.06f + 0.10f * proc.apvts.getRawParameterValue ("wow")->load(); grainDisc.repaint(); }
+    if (page == 1) filterView.repaint();
+    if (page == 2) { constellation.phase = t; constellation.repaint(); }
+    if (page == 3) chopPads.repaint();
+}
+
+static void drawPanel (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour acc, const juce::String& title, const juce::String& sub = {})
+{
+    g.setColour (AlienColours::panel.withAlpha (0.85f));
+    g.fillRoundedRectangle (r, 14.0f);
+    g.setColour (AlienColours::edge);
+    g.drawRoundedRectangle (r, 14.0f, 1.0f);
+    g.setFont (alienFont (10.5f, true));
+    g.setColour (acc.withAlpha (0.85f));
+    g.drawText ("// " + title, (int) r.getX() + 14, (int) r.getY() + 6, 200, 14, juce::Justification::left);
+    if (sub.isNotEmpty())
+    {
+        g.setColour (AlienColours::dim);
+        g.setFont (alienFont (11.0f));
+        const int tw = (int) juce::GlyphArrangement::getStringWidth (alienFont (10.5f, true), "// " + title);
+        g.drawText (sub, (int) r.getX() + 30 + tw, (int) r.getY() + 6, 700, 14, juce::Justification::left);
+    }
 }
 
 void HomeKeysEditor::paint (juce::Graphics& g)
@@ -514,9 +868,7 @@ void HomeKeysEditor::paint (juce::Graphics& g)
     const auto acc = forType (lastType < 0 ? 0 : lastType);
     auto r = getLocalBounds().toFloat();
 
-    // fond : vide spatial + lueur organique
-    g.setGradientFill (juce::ColourGradient (bg1, r.getCentreX(), r.getHeight() * 0.35f,
-                                             bg0, 0.0f, r.getHeight(), true));
+    g.setGradientFill (juce::ColourGradient (bg1, r.getCentreX(), r.getHeight() * 0.35f, bg0, 0.0f, r.getHeight(), true));
     g.fillAll();
     g.setGradientFill (juce::ColourGradient (acc.withAlpha (0.10f), r.getCentreX(), 40.0f,
                                              juce::Colours::transparentBlack, r.getCentreX(), 360.0f, true));
@@ -524,70 +876,70 @@ void HomeKeysEditor::paint (juce::Graphics& g)
 
     // grille hexagonale
     g.setColour (acc.withAlpha (0.035f));
-    const float hs = 18.0f;
-    const float hw = std::sqrt (3.0f) * hs;
+    const float hs = 18.0f, hw = std::sqrt (3.0f) * hs;
     for (int row = 0; row * hs * 1.5f < r.getHeight() + hs; ++row)
         for (int col = 0; col * hw < r.getWidth() + hw; ++col)
         {
-            const float cx = (float) col * hw + ((row & 1) ? hw * 0.5f : 0.0f);
-            const float cy = (float) row * hs * 1.5f;
+            const float cx = (float) col * hw + ((row & 1) ? hw * 0.5f : 0.0f), cy = (float) row * hs * 1.5f;
             juce::Path hex;
             for (int k = 0; k < 6; ++k)
             {
                 const float a = juce::MathConstants<float>::pi / 3.0f * (float) k + juce::MathConstants<float>::pi / 6.0f;
-                const float px = cx + hs * std::cos (a), py = cy + hs * std::sin (a);
-                if (k == 0) hex.startNewSubPath (px, py); else hex.lineTo (px, py);
+                if (k == 0) hex.startNewSubPath (cx + hs * std::cos (a), cy + hs * std::sin (a));
+                else hex.lineTo (cx + hs * std::cos (a), cy + hs * std::sin (a));
             }
             hex.closeSubPath();
             g.strokePath (hex, juce::PathStrokeType (0.8f));
         }
 
-    // logo HOMEKEYS avec lueur
+    // logo
     const juce::String logo = "H O M E K E Y S";
     auto logoArea = juce::Rectangle<int> (28, 16, 420, 44);
     g.setFont (alienFont (34.0f, true));
     for (int k = 4; k >= 1; --k)
     {
         g.setColour (acc.withAlpha (0.06f * (float) k));
-        g.drawText (logo, logoArea.translated (0, 0).expanded (k, k), juce::Justification::centredLeft);
+        g.drawText (logo, logoArea.expanded (k, k), juce::Justification::centredLeft);
     }
     g.setColour (acc);
     g.drawText (logo, logoArea, juce::Justification::centredLeft);
     g.setColour (dim);
     g.setFont (alienFont (11.5f));
-    g.drawText ("XENO PIANO ENGINE  //  v1.0", 32, 58, 300, 16, juce::Justification::centredLeft);
+    g.drawText ("XENO PIANO ENGINE  //  v2.0", 32, 58, 300, 16, juce::Justification::centredLeft);
 
-    // panneau des boutons
-    auto knobPanel = juce::Rectangle<float> (20.0f, 318.0f, r.getWidth() - 40.0f, 158.0f);
-    g.setColour (panel.withAlpha (0.85f));
-    g.fillRoundedRectangle (knobPanel, 14.0f);
-    g.setColour (edge);
-    g.drawRoundedRectangle (knobPanel, 14.0f, 1.0f);
+    // panneaux de la page
+    const float W = r.getWidth() - 40.0f;
+    if (page == 0)
+    {
+        drawPanel (g, { 20, 308, W, 158 }, acc, "CORPS");
+        const float sx = 20.0f + W * 5.0f / 9.0f;
+        g.setColour (acc.withAlpha (0.25f));
+        g.drawLine (sx, 326, sx, 448, 1.0f);
+        g.setFont (alienFont (10.5f, true));
+        g.setColour (acc.withAlpha (0.85f));
+        g.drawText ("// ESPACE", (int) sx + 14, 314, 120, 14, juce::Justification::left);
+        drawPanel (g, { 20, 474, W, 152 }, acc, "GRAIN", "bande  /  cassette  /  lo-fi  /  vinyle");
+    }
+    else if (page == 1)
+    {
+        drawPanel (g, { 20, 214, W, 168 }, acc, "OSCILLATEUR / FILTRE / AMPLI", "filtre LP-BP-HP, attaque, declin, marteau, sub, unison");
+        drawPanel (g, { 20, 392, W, 234 }, acc, "DELAY", "ping-pong synchronise au tempo de FL Studio");
+    }
+    else if (page == 2)
+    {
+        drawPanel (g, { 680, 214, W - 660, 412 }, acc, "LFO CONSTELLATION");
+        g.setColour (AlienColours::dim);
+        g.setFont (alienFont (11.5f));
+        g.drawFittedText ("Chaque etoile module une partie du son\n(TONE, FILTRE, DRIVE, WOW, CRUSH,\nCHORUS, REVERB, ESPACE).\n\n"
+                          "Loin du centre = plus intense.\nTourner autour du centre = vitesse.\n\nDEPTH = quantite totale (0 = off).\nRATE = vitesse generale.",
+                          juce::Rectangle<int> (696, 410, (int) W - 692, 200), juce::Justification::topLeft, 12);
+    }
+    else
+    {
+        drawPanel (g, { 20, 214, W, 412 }, acc, "CHOP EN TEMPS REEL",
+                   "CHOP ON = chop permanent  //  ou joue les notes C1 a G1 dans le piano roll pour chopper en direct");
+    }
 
-    // separateurs de sections
-    const float sx = knobPanel.getX() + knobPanel.getWidth() * 5.0f / 9.0f;
-    g.setColour (acc.withAlpha (0.25f));
-    g.drawLine (sx, knobPanel.getY() + 18, sx, knobPanel.getBottom() - 18, 1.0f);
-    g.setFont (alienFont (10.5f, true));
-    g.setColour (acc.withAlpha (0.8f));
-    g.drawText ("// CORPS", (int) knobPanel.getX() + 14, (int) knobPanel.getY() + 6, 120, 14, juce::Justification::left);
-    g.drawText ("// ESPACE", (int) sx + 14, (int) knobPanel.getY() + 6, 120, 14, juce::Justification::left);
-
-    // panneau GRAIN
-    auto grainPanel = juce::Rectangle<float> (20.0f, 488.0f, r.getWidth() - 40.0f, 140.0f);
-    g.setColour (panel.withAlpha (0.85f));
-    g.fillRoundedRectangle (grainPanel, 14.0f);
-    g.setColour (edge);
-    g.drawRoundedRectangle (grainPanel, 14.0f, 1.0f);
-    g.setFont (alienFont (10.5f, true));
-    g.setColour (acc.withAlpha (0.8f));
-    g.drawText ("// GRAIN", (int) grainPanel.getX() + 14, (int) grainPanel.getY() + 6, 120, 14, juce::Justification::left);
-    g.setColour (dim);
-    g.setFont (alienFont (11.0f));
-    g.drawText ("bande  /  cassette  /  lo-fi  /  vinyle", (int) grainPanel.getX() + 90, (int) grainPanel.getY() + 6, 300, 14,
-                juce::Justification::left);
-
-    // cadre clavier
     g.setColour (acc.withAlpha (0.35f));
     g.drawRoundedRectangle (keyboard.getBounds().toFloat().expanded (4.0f), 8.0f, 1.2f);
 }
@@ -596,44 +948,54 @@ void HomeKeysEditor::resized()
 {
     auto r = getLocalBounds();
 
-    // barre de presets (haut droite)
-    auto top = juce::Rectangle<int> (460, 24, r.getWidth() - 480, 34);
-    folderBtn.setBounds (top.removeFromRight (78));
-    top.removeFromRight (6);
-    delBtn.setBounds (top.removeFromRight (46));
-    top.removeFromRight (6);
-    saveBtn.setBounds (top.removeFromRight (58));
-    top.removeFromRight (10);
-    prevBtn.setBounds (top.removeFromLeft (34));
-    nextBtn.setBounds (top.removeFromRight (34));
-    top.reduce (6, 0);
+    // barre de presets
+    auto top = juce::Rectangle<int> (440, 24, r.getWidth() - 460, 34);
+    folderBtn.setBounds (top.removeFromRight (74)); top.removeFromRight (5);
+    importBtn.setBounds (top.removeFromRight (64)); top.removeFromRight (5);
+    delBtn.setBounds (top.removeFromRight (42));    top.removeFromRight (5);
+    saveBtn.setBounds (top.removeFromRight (52));   top.removeFromRight (8);
+    prevBtn.setBounds (top.removeFromLeft (30));
+    nextBtn.setBounds (top.removeFromRight (30));
+    top.reduce (5, 0);
     presetBox.setBounds (top);
 
     typeSelector.setBounds (20, 92, r.getWidth() - 40, 76);
-    scope.setBounds (20, 182, r.getWidth() - 40, 122);
 
-    auto kp = juce::Rectangle<int> (20, 318, r.getWidth() - 40, 158).reduced (8, 22);
-    const int kw = kp.getWidth() / 9;
-    for (int i = 0; i < 9; ++i)
+    // onglets
+    auto tb = juce::Rectangle<int> (20, 176, r.getWidth() - 40, 30);
+    const int tw[4] = { 110, 110, 170, 110 };
+    for (int i = 0; i < 4; ++i) { tabs[(size_t) i].setBounds (tb.removeFromLeft (tw[i])); tb.removeFromLeft (6); }
+
+    const int W = r.getWidth() - 40;
+    if (page == 0)
     {
-        auto cell = kp.removeFromLeft (kw);
-        knobs[(size_t) i].label.setBounds (cell.removeFromTop (16));
-        knobs[(size_t) i].slider.setBounds (cell.reduced (6, 0));
+        scope.setBounds (20, 214, W, 86);
+        placeRow (juce::Rectangle<int> (28, 330, W - 16, 120), { "tone", "velocity", "release", "layer", "width", "chorus", "reverb", "size", "volume" });
+        auto gp = juce::Rectangle<int> (28, 498, W - 16, 120);
+        grainDisc.setBounds (gp.removeFromRight (300).reduced (10, 0));
+        placeRow (gp, { "octave", "drive", "wow", "crush", "vinyl" });
     }
-
-    // rangee GRAIN : 5 boutons + disque vinyle
-    auto gp = juce::Rectangle<int> (20, 488, r.getWidth() - 40, 140).reduced (8, 0);
-    gp.removeFromTop (24);
-    gp.removeFromBottom (8);
-    grainDisc.setBounds (gp.removeFromRight (300).reduced (10, 0));
-    for (int i = 9; i < 14; ++i)
+    else if (page == 1)
     {
-        auto cell = gp.removeFromLeft (kw + 8);
-        knobs[(size_t) i].label.setBounds (cell.removeFromTop (16));
-        knobs[(size_t) i].slider.setBounds (cell.reduced (10, 0));
+        placeRow (juce::Rectangle<int> (28, 238, W - 16, 130), { "fcut", "fres", "ftype", "attack", "decay", "hammer", "sub", "unison", "fine" });
+        auto dp = juce::Rectangle<int> (28, 418, W - 16, 196);
+        filterView.setBounds (dp.removeFromRight (520).reduced (10, 6));
+        placeRow (dp.withTrimmedTop (30).withHeight (130), { "dtime", "dfb", "dmix" });
+    }
+    else if (page == 2)
+    {
+        constellation.setBounds (20, 214, 650, 412);
+        placeRow (juce::Rectangle<int> (700, 244, 240, 130), { "cdepth", "crate" });
+        randomBtn.setBounds (712, 376, 216, 30);
+    }
+    else
+    {
+        chopOn.setBounds (40, 244, 150, 40);
+        placeRow (juce::Rectangle<int> (210, 236, 240, 130), { "choprate", "chopmix" });
+        chopPads.setBounds (40, 380, W - 40, 232);
     }
 
     keyboard.setBounds (24, 646, r.getWidth() - 48, 128);
-    keyboard.setKeyWidth ((float) keyboard.getWidth() / 52.0f); // 52 touches blanches = 88 touches
+    keyboard.setKeyWidth ((float) keyboard.getWidth() / 52.0f);
     keyboard.setLowestVisibleKey (21);
 }

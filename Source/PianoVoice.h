@@ -43,6 +43,12 @@ struct EngineParams
     std::atomic<float> layer    { 0.5f };
     std::atomic<float> width    { 0.7f };
     std::atomic<int>   octave   { 0 };
+    std::atomic<float> attack   { 0.002f }; // s
+    std::atomic<float> decayMul { 1.0f };
+    std::atomic<float> hammer   { 1.0f };
+    std::atomic<float> sub      { 0.0f };
+    std::atomic<float> unison   { 1.0f };
+    std::atomic<float> fine     { 0.0f };   // cents
 };
 
 //==============================================================================
@@ -86,8 +92,8 @@ private:
     float noiseAmp = 0, noiseDec = 0, nLp1 = 0, nLp2 = 0, nHp = 0, noiseCoef = 0.1f, noiseHpCoef = 0.01f;
 
     // Nappe (cordes / pad)
-    std::array<double, 3> padPhase {};
-    std::array<double, 3> padInc {};
+    std::array<double, 5> padPhase {};
+    std::array<double, 5> padInc {};
     float padLevel = 0, padTarget = 0, padAtkCoef = 0, padRelCoef = 1, padSine = 0;
     float padLp1L = 0, padLp2L = 0, padLp1R = 0, padLp2R = 0, padCoef = 0.1f;
     float padPanL = 0.7f, padPanR = 0.7f;

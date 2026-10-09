@@ -1,4 +1,4 @@
-HOMEKEYS - XENO PIANO ENGINE v1.0
+HOMEKEYS - XENO PIANO ENGINE v2.0
 ==================================
 
 INSTALLER DANS FL STUDIO
@@ -39,9 +39,21 @@ VINYL     souffle et craquements de vinyle
 
 PRESETS
 -------
-PACK "HomeKey Preset" (39 presets, 11 themes) : clique sur DOSSIER dans
-HomeKeys et copie le dossier "HomeKey Preset" dedans. Les themes
-(Douceur, Love, Trap, Drill, Lo-Fi, Cinema...) apparaissent dans le menu.
+PACK "HomeKey Preset" (63 presets) : il s'installe TOUT SEUL au premier
+lancement. Classement : Keys, Bass, Leads, Bells, Pads, Plucks, Lo-Fi,
+Cinematic, Chops, Constellation. Le style est entre crochets : [Trap]...
+- IMPORT : ajoute un dossier, un .zip ou des .hkpreset (confirmation OK).
+
+ONGLETS
+-------
+PIANO          : corps, espace et grain
+SYNTH          : filtre LP/BP/HP, attack, decay, hammer, sub, unison,
+                 fine, delay ping-pong synchronise au tempo
+CONSTELLATION  : LFO aleatoire. Glisse les etoiles (loin du centre =
+                 plus intense). DEPTH = quantite, RATE = vitesse, RANDOM.
+CHOP           : CHOP ON = chop permanent, ou joue dans le piano roll :
+                 C1 Gate, C#1 Pattern, D1 Stutter, D#1 Reverse,
+                 E1 Tape Stop, F1 Half Speed, F#1 Octave Up, G1 Glitch
 
 - 15 presets d'usine (3 par piano), fleches < > pour naviguer.
 - SAVE : sauvegarde ton son comme nouveau preset.
