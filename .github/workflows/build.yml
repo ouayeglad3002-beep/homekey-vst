@@ -7,6 +7,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Recuperer le code
         uses: actions/checkout@v5
@@ -33,3 +35,15 @@ jobs:
         with:
           name: HomeKeys-Windows-VST3
           path: package
+
+      - name: Publier le zip dans la branche builds
+        shell: pwsh
+        run: |
+          Compress-Archive -Path package/* -DestinationPath HomeKeys-Windows.zip -Force
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan builds
+          git rm -rf --cached . | Out-Null
+          git add -f HomeKeys-Windows.zip
+          git commit -m "Build ${{ github.sha }}"
+          git push -f origin builds
