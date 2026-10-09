@@ -1,0 +1,39 @@
+HOMEKEYS - XENO PIANO ENGINE v1.0
+==================================
+
+INSTALLER DANS FL STUDIO
+------------------------
+1. Copie le dossier "HomeKeys.vst3" dans :
+      C:\Program Files\Common Files\VST3\
+2. Ouvre FL Studio > Options > Manage plugins (ou "Gerer les plugins").
+3. Clique sur "Find installed plugins" (Rechercher). HomeKeys apparait dans
+   la liste : coche l'etoile pour l'ajouter a tes favoris.
+4. Dans le Channel Rack : "+" > HomeKeys. C'est pret.
+
+HomeKeys.exe = version autonome (sans FL), pratique pour tester.
+
+LES 5 PIANOS
+------------
+DOUX         piano feutre, intime, sombre
+GRAVE        profond, sub-basse, long sustain
+ORCHESTRE    piano de concert brillant + cordes
+CINEMATIQUE  piano + nappe sombre, grand espace
+DREAMING     piano reveur, shimmer, chorus, reverb immense
+
+LES BOUTONS
+-----------
+TONE      brillance du piano          CHORUS   ondulation / largeur
+VELOCITY  sensibilite a la frappe     REVERB   quantite d'espace
+RELEASE   duree apres relachement     SIZE     taille de la salle
+LAYER     quantite de nappe/cordes    VOLUME   volume general
+WIDTH     largeur stereo
+La pedale de sustain (CC64) est geree.
+
+PRESETS
+-------
+- 15 presets d'usine (3 par piano), fleches < > pour naviguer.
+- SAVE : sauvegarde ton son comme nouveau preset.
+- DEL  : supprime un de tes presets.
+- DOSSIER : ouvre Documents\HomeKeys\Presets
+  Tu peux y ajouter / partager des fichiers .hkpreset : ils apparaissent
+  automatiquement sous "MES PRESETS".
