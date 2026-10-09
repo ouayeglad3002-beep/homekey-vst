@@ -15,6 +15,7 @@ public:
     int  getNumFactory() const;
     juce::String getPresetName (int index) const;
     bool isFactory (int index) const { return index < getNumFactory(); }
+    juce::String getCategory (int index) const;   // nom du dossier du preset ("" = mes presets)
 
     void loadPreset (int index);
     bool savePreset (const juce::String& name);   // sauvegarde l'etat actuel

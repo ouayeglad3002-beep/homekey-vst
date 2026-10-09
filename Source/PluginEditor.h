@@ -71,6 +71,18 @@ private:
 };
 
 //==============================================================================
+class GrainDisc : public juce::Component
+{
+public:
+    explicit GrainDisc (juce::AudioProcessorValueTreeState& s) : apvts (s) {}
+    void paint (juce::Graphics&) override;
+    juce::Colour accent = AlienColours::acid;
+    float angle = 0.0f;
+private:
+    juce::AudioProcessorValueTreeState& apvts;
+};
+
+//==============================================================================
 class HomeKeysEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
@@ -97,7 +109,8 @@ private:
         juce::Label label;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attach;
     };
-    std::array<Knob, 9> knobs;
+    std::array<Knob, 14> knobs;
+    GrainDisc grainDisc;
 
     juce::ComboBox presetBox;
     juce::TextButton prevBtn { "<" }, nextBtn { ">" }, saveBtn { "SAVE" }, delBtn { "DEL" }, folderBtn { "DOSSIER" };

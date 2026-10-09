@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<HomeKeysState presetName="UK Grey Keys">
+  <PARAM id="chorus" value="0.05"/>
+  <PARAM id="crush" value="0.1"/>
+  <PARAM id="drive" value="0.3"/>
+  <PARAM id="layer" value="0.35"/>
+  <PARAM id="octave" value="0"/>
+  <PARAM id="release" value="0.4"/>
+  <PARAM id="reverb" value="0.38"/>
+  <PARAM id="size" value="0.75"/>
+  <PARAM id="tone" value="-0.3"/>
+  <PARAM id="type" value="1"/>
+  <PARAM id="velocity" value="0.85"/>
+  <PARAM id="vinyl" value="0.02"/>
+  <PARAM id="volume" value="0"/>
+  <PARAM id="width" value="0.7"/>
+  <PARAM id="wow" value="0.04"/>
+</HomeKeysState>

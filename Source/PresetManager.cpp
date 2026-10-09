@@ -45,9 +45,17 @@ juce::File PresetManager::getUserFolder()
 
 void PresetManager::refresh()
 {
-    userFiles = getUserFolder().findChildFiles (juce::File::findFiles, false, juce::String ("*") + extension);
-    std::sort (userFiles.begin(), userFiles.end(), [] (const juce::File& a, const juce::File& b)
-               { return a.getFileNameWithoutExtension().compareIgnoreCase (b.getFileNameWithoutExtension()) < 0; });
+    // lit aussi les sous-dossiers (packs de presets ranges par theme)
+    const auto root = getUserFolder();
+    userFiles = root.findChildFiles (juce::File::findFiles, true, juce::String ("*") + extension);
+    std::sort (userFiles.begin(), userFiles.end(), [root] (const juce::File& a, const juce::File& b)
+    {
+        // presets perso (racine) en premier, puis chaque dossier dans l'ordre alphabetique
+        const auto ca = a.getParentDirectory() == root ? juce::String() : a.getParentDirectory().getRelativePathFrom (root);
+        const auto cb = b.getParentDirectory() == root ? juce::String() : b.getParentDirectory().getRelativePathFrom (root);
+        if (ca != cb) return ca.compareIgnoreCase (cb) < 0;
+        return a.getFileNameWithoutExtension().compareIgnoreCase (b.getFileNameWithoutExtension()) < 0;
+    });
 }
 
 int PresetManager::getNumFactory() const { return (int) factory().size(); }
@@ -57,7 +65,19 @@ juce::String PresetManager::getPresetName (int index) const
 {
     if (index < 0 || index >= getNumPresets()) return {};
     if (isFactory (index)) return factory()[(size_t) index].name;
-    return "* " + userFiles[index - getNumFactory()].getFileNameWithoutExtension();
+    return userFiles[index - getNumFactory()].getFileNameWithoutExtension();
+}
+
+juce::String PresetManager::getCategory (int index) const
+{
+    if (isFactory (index) || index >= getNumPresets()) return {};
+    const auto parent = userFiles[index - getNumFactory()].getParentDirectory();
+    if (parent == getUserFolder()) return {};
+    // "HomeKey Preset/03 - Trap" -> "TRAP"
+    auto name = parent.getFileName();
+    if (name.containsChar ('-') && name.substring (0, 2).containsOnly ("0123456789"))
+        name = name.fromFirstOccurrenceOf ("-", false, false).trim();
+    return name.toUpperCase();
 }
 
 void PresetManager::setParam (const juce::String& id, float value)
@@ -69,6 +89,11 @@ void PresetManager::setParam (const juce::String& id, float value)
 void PresetManager::loadPreset (int index)
 {
     if (index < 0 || index >= getNumPresets()) return;
+
+    // on repart des valeurs par defaut : aucun grain d'un ancien preset ne reste
+    for (auto* param : apvts.processor.getParameters())
+        if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param))
+            ranged->setValueNotifyingHost (ranged->getDefaultValue());
 
     if (isFactory (index))
     {

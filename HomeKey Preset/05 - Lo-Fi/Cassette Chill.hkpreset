@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<HomeKeysState presetName="Cassette Chill">
+  <PARAM id="chorus" value="0.2"/>
+  <PARAM id="crush" value="0.25"/>
+  <PARAM id="drive" value="0.35"/>
+  <PARAM id="layer" value="0"/>
+  <PARAM id="octave" value="0"/>
+  <PARAM id="release" value="0.6"/>
+  <PARAM id="reverb" value="0.3"/>
+  <PARAM id="size" value="0.5"/>
+  <PARAM id="tone" value="-0.35"/>
+  <PARAM id="type" value="0"/>
+  <PARAM id="velocity" value="0.65"/>
+  <PARAM id="vinyl" value="0.45"/>
+  <PARAM id="volume" value="0"/>
+  <PARAM id="width" value="0.6"/>
+  <PARAM id="wow" value="0.45"/>
+</HomeKeysState>

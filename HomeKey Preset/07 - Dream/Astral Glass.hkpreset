@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<HomeKeysState presetName="Astral Glass">
+  <PARAM id="chorus" value="0.65"/>
+  <PARAM id="crush" value="0"/>
+  <PARAM id="drive" value="0"/>
+  <PARAM id="layer" value="0.55"/>
+  <PARAM id="octave" value="1"/>
+  <PARAM id="release" value="2.5"/>
+  <PARAM id="reverb" value="0.75"/>
+  <PARAM id="size" value="0.98"/>
+  <PARAM id="tone" value="0.25"/>
+  <PARAM id="type" value="4"/>
+  <PARAM id="velocity" value="0.7"/>
+  <PARAM id="vinyl" value="0"/>
+  <PARAM id="volume" value="-1"/>
+  <PARAM id="width" value="1"/>
+  <PARAM id="wow" value="0.05"/>
+</HomeKeysState>

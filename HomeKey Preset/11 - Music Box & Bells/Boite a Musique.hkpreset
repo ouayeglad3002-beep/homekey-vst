@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<HomeKeysState presetName="Boite a Musique">
+  <PARAM id="chorus" value="0.2"/>
+  <PARAM id="crush" value="0"/>
+  <PARAM id="drive" value="0"/>
+  <PARAM id="layer" value="0"/>
+  <PARAM id="octave" value="2"/>
+  <PARAM id="release" value="1.2"/>
+  <PARAM id="reverb" value="0.5"/>
+  <PARAM id="size" value="0.75"/>
+  <PARAM id="tone" value="0.5"/>
+  <PARAM id="type" value="2"/>
+  <PARAM id="velocity" value="0.75"/>
+  <PARAM id="vinyl" value="0.05"/>
+  <PARAM id="volume" value="1"/>
+  <PARAM id="width" value="0.9"/>
+  <PARAM id="wow" value="0.05"/>
+</HomeKeysState>

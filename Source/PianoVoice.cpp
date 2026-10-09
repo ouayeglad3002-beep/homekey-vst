@@ -46,7 +46,7 @@ void PianoVoice::startNote (int midiNote, float velocity, juce::SynthesiserSound
     const float layer = params.layer.load();
 
     const float vel = juce::jlimit (0.0f, 1.0f, velocity);
-    const float n   = (float) midiNote;
+    const float n   = (float) juce::jlimit (9, 120, midiNote + params.octave.load() * 12);
 
     // Accordage "stretch" comme un vrai piano (aigus legerement hauts, graves legerement bas)
     const float octFrom69 = (n - 69.0f) / 12.0f;

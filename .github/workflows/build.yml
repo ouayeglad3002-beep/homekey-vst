@@ -26,6 +26,7 @@ jobs:
           Copy-Item -Recurse "build/HomeKeys_artefacts/Release/VST3/HomeKeys.vst3" "package/HomeKeys.vst3"
           Copy-Item "build/HomeKeys_artefacts/Release/Standalone/HomeKeys.exe" "package/HomeKeys.exe"
           Copy-Item "INSTALLATION.txt" "package/INSTALLATION.txt"
+          Copy-Item -Recurse "HomeKey Preset" "package/HomeKey Preset"
 
       - name: Telecharger le resultat
         uses: actions/upload-artifact@v5

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<HomeKeysState presetName="Sunset Lagos">
+  <PARAM id="chorus" value="0.5"/>
+  <PARAM id="crush" value="0"/>
+  <PARAM id="drive" value="0.15"/>
+  <PARAM id="layer" value="0.35"/>
+  <PARAM id="octave" value="0"/>
+  <PARAM id="release" value="0.9"/>
+  <PARAM id="reverb" value="0.45"/>
+  <PARAM id="size" value="0.75"/>
+  <PARAM id="tone" value="0.1"/>
+  <PARAM id="type" value="4"/>
+  <PARAM id="velocity" value="0.75"/>
+  <PARAM id="vinyl" value="0"/>
+  <PARAM id="volume" value="-1"/>
+  <PARAM id="width" value="0.9"/>
+  <PARAM id="wow" value="0.06"/>
+</HomeKeysState>

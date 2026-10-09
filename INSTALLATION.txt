@@ -29,8 +29,20 @@ LAYER     quantite de nappe/cordes    VOLUME   volume general
 WIDTH     largeur stereo
 La pedale de sustain (CC64) est geree.
 
+GRAIN
+-----
+OCTAVE    transpose de -2 a +2 octaves (boite a musique, trap grave...)
+DRIVE     saturation chaude de bande magnetique
+WOW       ondulation de cassette (pleurage)
+CRUSH     grain numerique lo-fi
+VINYL     souffle et craquements de vinyle
+
 PRESETS
 -------
+PACK "HomeKey Preset" (39 presets, 11 themes) : clique sur DOSSIER dans
+HomeKeys et copie le dossier "HomeKey Preset" dedans. Les themes
+(Douceur, Love, Trap, Drill, Lo-Fi, Cinema...) apparaissent dans le menu.
+
 - 15 presets d'usine (3 par piano), fleches < > pour naviguer.
 - SAVE : sauvegarde ton son comme nouveau preset.
 - DEL  : supprime un de tes presets.

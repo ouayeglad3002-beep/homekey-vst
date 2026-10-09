@@ -52,6 +52,18 @@ private:
     juce::dsp::StateVariableTPTFilter<float> toneFilter;
     juce::dsp::Chorus<float> chorus;
     juce::dsp::Reverb reverb;
+    // --- GRAIN ---
+    juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Lagrange3rd> wowDelay { 8192 };
+    juce::SmoothedValue<float> wowAmt, driveAmt, crushAmt, vinylAmt;
+    double wowPhase = 0, flutterPhase = 0;
+    float wowDrift = 0, wowDriftTarget = 0;
+    std::array<float, 2> holdValue {}, dcX {}, dcY {};
+    float holdPhase = 1.0f;
+    float hissLp = 0, crackleEnv = 0, crackleLp = 0, crackleSign = 1;
+    juce::Random grainRng;
+    void processGrain (juce::AudioBuffer<float>&, int n);
+    void addVinyl (juce::AudioBuffer<float>&, int n);
+
     juce::SmoothedValue<float> volume;
     juce::SmoothedValue<float> cutoff;
 
@@ -65,6 +77,11 @@ private:
     std::atomic<float>* pReverb = nullptr;
     std::atomic<float>* pSize = nullptr;
     std::atomic<float>* pWidth = nullptr;
+    std::atomic<float>* pOctave = nullptr;
+    std::atomic<float>* pDrive = nullptr;
+    std::atomic<float>* pWow = nullptr;
+    std::atomic<float>* pCrush = nullptr;
+    std::atomic<float>* pVinyl = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HomeKeysProcessor)
 };

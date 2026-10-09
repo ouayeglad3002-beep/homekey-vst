@@ -257,10 +257,85 @@ void AlienScope::paint (juce::Graphics& g)
 }
 
 //==============================================================================
+// DISQUE DE GRAIN (vinyle alien qui tourne)
+//==============================================================================
+void GrainDisc::paint (juce::Graphics& g)
+{
+    const float drive = apvts.getRawParameterValue ("drive")->load();
+    const float wow   = apvts.getRawParameterValue ("wow")->load();
+    const float crush = apvts.getRawParameterValue ("crush")->load();
+    const float vinyl = apvts.getRawParameterValue ("vinyl")->load();
+    const float amount = juce::jlimit (0.0f, 1.0f, (drive + wow + crush + vinyl) * 0.5f);
+
+    auto r = getLocalBounds().toFloat();
+    const float rad = juce::jmin (r.getHeight(), r.getWidth() * 0.5f) * 0.5f - 2.0f;
+    const auto c = juce::Point<float> (r.getX() + rad + 6.0f, r.getCentreY());
+
+    // halo
+    g.setGradientFill (juce::ColourGradient (accent.withAlpha (0.10f + 0.25f * amount), c,
+                                             juce::Colours::transparentBlack, c.translated (rad * 1.4f, 0), true));
+    g.fillEllipse (c.x - rad * 1.4f, c.y - rad * 1.4f, rad * 2.8f, rad * 2.8f);
+
+    // disque
+    g.setColour (juce::Colour (0xff030506));
+    g.fillEllipse (c.x - rad, c.y - rad, rad * 2, rad * 2);
+    for (float gr = rad - 4.0f; gr > rad * 0.38f; gr -= 3.0f)
+    {
+        g.setColour (juce::Colour (0xff11181e).withAlpha (0.9f));
+        g.drawEllipse (c.x - gr, c.y - gr, gr * 2, gr * 2, 0.8f);
+    }
+    // reflet qui tourne
+    juce::Path shine;
+    shine.addPieSegment (c.x - rad, c.y - rad, rad * 2, rad * 2, angle, angle + 0.5f, 0.38f);
+    g.setColour (accent.withAlpha (0.10f + 0.20f * amount));
+    g.fillPath (shine);
+    shine.applyTransform (juce::AffineTransform::rotation (juce::MathConstants<float>::pi, c.x, c.y));
+    g.fillPath (shine);
+
+    // etiquette centrale (oeil alien)
+    const float lr = rad * 0.34f;
+    g.setGradientFill (juce::ColourGradient (accent, c, accent.withAlpha (0.15f), c.translated (lr, 0), true));
+    g.fillEllipse (c.x - lr, c.y - lr, lr * 2, lr * 2);
+    g.setColour (juce::Colour (0xff04070a));
+    g.fillEllipse (c.x - 2.5f, c.y - lr * 0.7f, 5.0f, lr * 1.4f);
+    const auto dot = c.getPointOnCircumference (lr * 0.75f, angle * 1.0f);
+    g.fillEllipse (dot.x - 2.0f, dot.y - 2.0f, 4.0f, 4.0f);
+
+    // grains de poussiere (proportionnels au vinyle)
+    juce::Random rnd (12345);
+    for (int i = 0; i < (int) (vinyl * 40.0f); ++i)
+    {
+        const float a = rnd.nextFloat() * juce::MathConstants<float>::twoPi + angle;
+        const float d = rad * (0.42f + 0.55f * rnd.nextFloat());
+        const auto p = c.getPointOnCircumference (d, a);
+        g.setColour (accent.withAlpha (0.35f + 0.4f * rnd.nextFloat()));
+        g.fillEllipse (p.x - 0.8f, p.y - 0.8f, 1.6f, 1.6f);
+    }
+
+    // jauges a droite
+    auto meters = r.withTrimmedLeft (rad * 2.0f + 24.0f).reduced (0.0f, 6.0f);
+    const char* names[4] = { "DRIVE", "WOW", "CRUSH", "VINYL" };
+    const float vals[4]  = { drive, wow, crush, vinyl };
+    const float rowH = meters.getHeight() / 4.0f;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto row = meters.removeFromTop (rowH).reduced (0.0f, 4.0f);
+        g.setColour (AlienColours::dim);
+        g.setFont (alienFont (10.0f, true));
+        g.drawText (names[i], row.removeFromLeft (46.0f), juce::Justification::centredLeft);
+        auto bar = row.reduced (0.0f, row.getHeight() * 0.3f);
+        g.setColour (juce::Colour (0xff10181e));
+        g.fillRoundedRectangle (bar, 2.0f);
+        g.setColour (accent.withAlpha (0.85f));
+        g.fillRoundedRectangle (bar.withWidth (bar.getWidth() * vals[i]), 2.0f);
+    }
+}
+
+//==============================================================================
 // EDITEUR
 //==============================================================================
 HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
-    : AudioProcessorEditor (&p), proc (p), typeSelector (p.apvts), scope (p),
+    : AudioProcessorEditor (&p), proc (p), typeSelector (p.apvts), scope (p), grainDisc (p.apvts),
       keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel (&lnf);
@@ -268,9 +343,13 @@ HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
     addAndMakeVisible (typeSelector);
     addAndMakeVisible (scope);
 
-    const char* ids[9]    = { "tone", "velocity", "release", "layer", "width", "chorus", "reverb", "size", "volume" };
-    const char* titles[9] = { "TONE", "VELOCITY", "RELEASE", "LAYER", "WIDTH", "CHORUS", "REVERB", "SIZE", "VOLUME" };
-    for (int i = 0; i < 9; ++i)
+    addAndMakeVisible (grainDisc);
+
+    const char* ids[14]    = { "tone", "velocity", "release", "layer", "width", "chorus", "reverb", "size", "volume",
+                               "octave", "drive", "wow", "crush", "vinyl" };
+    const char* titles[14] = { "TONE", "VELOCITY", "RELEASE", "LAYER", "WIDTH", "CHORUS", "REVERB", "SIZE", "VOLUME",
+                               "OCTAVE", "DRIVE", "WOW", "CRUSH", "VINYL" };
+    for (int i = 0; i < 14; ++i)
     {
         auto& k = knobs[(size_t) i];
         k.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
@@ -292,6 +371,11 @@ HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
     }
     knobs[2].slider.setTextValueSuffix (" s");
     knobs[8].slider.setTextValueSuffix (" dB");
+    knobs[9].slider.setTextValueSuffix (" oct");
+    knobs[10].slider.setTooltip ("Saturation chaude de bande magnetique");
+    knobs[11].slider.setTooltip ("Ondulation de cassette (pleurage / scintillement)");
+    knobs[12].slider.setTooltip ("Grain numerique lo-fi (bits / echantillonnage)");
+    knobs[13].slider.setTooltip ("Souffle et craquements de vinyle");
 
     // presets
     addAndMakeVisible (presetBox);
@@ -331,7 +415,7 @@ HomeKeysEditor::HomeKeysEditor (HomeKeysProcessor& p)
     keyboard.setColour (juce::MidiKeyboardComponent::upDownButtonArrowColourId, acid);
     addAndMakeVisible (keyboard);
 
-    setSize (1000, 640);
+    setSize (1000, 790);
     refreshPresetBox();
     timerCallback();
     startTimerHz (30);
@@ -351,6 +435,8 @@ void HomeKeysEditor::refreshPresetBox()
 
     const juce::StringArray groups { "DOUX", "GRAVE", "ORCHESTRE", "CINEMATIQUE", "DREAMING" };
     int lastGroup = -1;
+    juce::String lastCat;
+    bool firstUser = true;
     for (int i = 0; i < pm.getNumPresets(); ++i)
     {
         if (pm.isFactory (i))
@@ -358,10 +444,17 @@ void HomeKeysEditor::refreshPresetBox()
             const int grp = i / 3;
             if (grp != lastGroup) { presetBox.addSectionHeading (groups[grp]); lastGroup = grp; }
         }
-        else if (i == pm.getNumFactory())
+        else
         {
-            presetBox.addSeparator();
-            presetBox.addSectionHeading ("MES PRESETS");
+            auto cat = pm.getCategory (i);
+            if (cat.isEmpty()) cat = "MES PRESETS";
+            if (firstUser || cat != lastCat)
+            {
+                presetBox.addSeparator();
+                presetBox.addSectionHeading (cat);
+                lastCat = cat;
+                firstUser = false;
+            }
         }
         presetBox.addItem (pm.getPresetName (i), i + 1);
     }
@@ -400,6 +493,7 @@ void HomeKeysEditor::timerCallback()
         lastType = type;
         lnf.accent = forType (type);
         scope.accent = forType (type);
+        grainDisc.accent = forType (type);
         keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, forType (type).withAlpha (0.75f));
         keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, forType (type).withAlpha (0.25f));
         repaint();
@@ -408,6 +502,8 @@ void HomeKeysEditor::timerCallback()
     if (proc.presets.getCurrentName() != lastPresetName || proc.presets.getNumPresets() != lastPresetCount)
         refreshPresetBox();
 
+    grainDisc.angle += 0.06f + 0.10f * proc.apvts.getRawParameterValue ("wow")->load();
+    grainDisc.repaint();
     typeSelector.phase = t;
     typeSelector.repaint();
     scope.repaint();
@@ -477,6 +573,20 @@ void HomeKeysEditor::paint (juce::Graphics& g)
     g.drawText ("// CORPS", (int) knobPanel.getX() + 14, (int) knobPanel.getY() + 6, 120, 14, juce::Justification::left);
     g.drawText ("// ESPACE", (int) sx + 14, (int) knobPanel.getY() + 6, 120, 14, juce::Justification::left);
 
+    // panneau GRAIN
+    auto grainPanel = juce::Rectangle<float> (20.0f, 488.0f, r.getWidth() - 40.0f, 140.0f);
+    g.setColour (panel.withAlpha (0.85f));
+    g.fillRoundedRectangle (grainPanel, 14.0f);
+    g.setColour (edge);
+    g.drawRoundedRectangle (grainPanel, 14.0f, 1.0f);
+    g.setFont (alienFont (10.5f, true));
+    g.setColour (acc.withAlpha (0.8f));
+    g.drawText ("// GRAIN", (int) grainPanel.getX() + 14, (int) grainPanel.getY() + 6, 120, 14, juce::Justification::left);
+    g.setColour (dim);
+    g.setFont (alienFont (11.0f));
+    g.drawText ("bande  /  cassette  /  lo-fi  /  vinyle", (int) grainPanel.getX() + 90, (int) grainPanel.getY() + 6, 300, 14,
+                juce::Justification::left);
+
     // cadre clavier
     g.setColour (acc.withAlpha (0.35f));
     g.drawRoundedRectangle (keyboard.getBounds().toFloat().expanded (4.0f), 8.0f, 1.2f);
@@ -511,7 +621,19 @@ void HomeKeysEditor::resized()
         knobs[(size_t) i].slider.setBounds (cell.reduced (6, 0));
     }
 
-    keyboard.setBounds (24, 494, r.getWidth() - 48, 128);
+    // rangee GRAIN : 5 boutons + disque vinyle
+    auto gp = juce::Rectangle<int> (20, 488, r.getWidth() - 40, 140).reduced (8, 0);
+    gp.removeFromTop (24);
+    gp.removeFromBottom (8);
+    grainDisc.setBounds (gp.removeFromRight (300).reduced (10, 0));
+    for (int i = 9; i < 14; ++i)
+    {
+        auto cell = gp.removeFromLeft (kw + 8);
+        knobs[(size_t) i].label.setBounds (cell.removeFromTop (16));
+        knobs[(size_t) i].slider.setBounds (cell.reduced (10, 0));
+    }
+
+    keyboard.setBounds (24, 646, r.getWidth() - 48, 128);
     keyboard.setKeyWidth ((float) keyboard.getWidth() / 52.0f); // 52 touches blanches = 88 touches
     keyboard.setLowestVisibleKey (21);
 }

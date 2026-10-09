@@ -42,6 +42,7 @@ struct EngineParams
     std::atomic<float> release  { 0.5f };
     std::atomic<float> layer    { 0.5f };
     std::atomic<float> width    { 0.7f };
+    std::atomic<int>   octave   { 0 };
 };
 
 //==============================================================================
