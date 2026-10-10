@@ -1,31 +1,17 @@
 #include "PresetManager.h"
 #include "BinaryData.h"
 
-//                                             type  vol   tone  vel   rel   layer chorus reverb size width
+// Presets d'usine : un point de depart propre par monde
 const std::vector<PresetManager::Factory>& PresetManager::factory()
 {
     static const std::vector<Factory> f =
     {
-        // ---- DOUX ----
-        { "Doux - Felt Lullaby",      0,  0.0f, -0.20f, 0.70f, 0.45f, 0.0f, 0.10f, 0.28f, 0.45f, 0.65f },
-        { "Doux - Bedroom Keys",      0,  0.0f,  0.05f, 0.80f, 0.35f, 0.0f, 0.00f, 0.18f, 0.30f, 0.60f },
-        { "Doux - Whisper Felt",      0,  1.0f, -0.45f, 0.55f, 0.70f, 0.0f, 0.20f, 0.40f, 0.60f, 0.75f },
-        // ---- GRAVE ----
-        { "Grave - Abyss Grand",      1,  0.0f, -0.10f, 0.80f, 0.60f, 0.40f, 0.05f, 0.30f, 0.65f, 0.70f },
-        { "Grave - Low Cathedral",    1, -1.0f,  0.00f, 0.75f, 1.20f, 0.60f, 0.10f, 0.50f, 0.90f, 0.85f },
-        { "Grave - Dark Matter",      1,  0.0f, -0.40f, 0.85f, 0.80f, 0.80f, 0.15f, 0.35f, 0.75f, 0.70f },
-        // ---- ORCHESTRE ----
-        { "Orchestre - Concert Hall", 2, -1.0f,  0.15f, 0.85f, 0.55f, 0.30f, 0.05f, 0.35f, 0.80f, 0.80f },
-        { "Orchestre - Strings & Grand", 2, -2.0f, 0.05f, 0.80f, 0.90f, 0.80f, 0.15f, 0.40f, 0.85f, 0.90f },
-        { "Orchestre - Bright Stage", 2, -1.0f,  0.45f, 0.90f, 0.40f, 0.10f, 0.00f, 0.25f, 0.55f, 0.70f },
-        // ---- CINEMATIQUE ----
-        { "Cinematique - Epic Trailer", 3, -1.5f, 0.10f, 0.85f, 1.40f, 0.70f, 0.20f, 0.55f, 0.90f, 0.90f },
-        { "Cinematique - Nebula Score", 3, -1.0f, -0.20f, 0.70f, 2.00f, 0.55f, 0.35f, 0.65f, 0.95f, 1.00f },
-        { "Cinematique - Last Scene",   3,  0.0f, -0.05f, 0.80f, 1.00f, 0.35f, 0.15f, 0.45f, 0.80f, 0.80f },
-        // ---- DREAMING ----
-        { "Dreaming - Dream Signal",    4, -1.0f, -0.10f, 0.70f, 2.00f, 0.60f, 0.55f, 0.65f, 0.95f, 1.00f },
-        { "Dreaming - Astral Lullaby",  4,  0.0f, -0.35f, 0.60f, 2.80f, 0.75f, 0.70f, 0.75f, 0.98f, 1.00f },
-        { "Dreaming - Lucid Drift",     4, -0.5f,  0.10f, 0.75f, 1.60f, 0.45f, 0.45f, 0.55f, 0.85f, 0.90f },
+        //  nom                   type vol   tone  vel   rel   layer chorus reverb size width
+        { "INIT - Dreaming",      0,  0.0f,  0.0f, 0.75f, 1.2f, 0.4f, 0.35f, 0.50f, 0.85f, 0.90f },
+        { "INIT - Nebula",        1,  0.0f,  0.1f, 0.75f, 1.0f, 0.3f, 0.30f, 0.45f, 0.85f, 0.90f },
+        { "INIT - Cinema",        2,  0.0f,  0.0f, 0.80f, 1.2f, 0.4f, 0.15f, 0.45f, 0.90f, 0.85f },
+        { "INIT - Abyss",         3,  0.0f, -0.2f, 0.85f, 1.0f, 0.3f, 0.10f, 0.40f, 0.85f, 0.75f },
+        { "INIT - Backrooms",     4,  0.0f, -0.2f, 0.70f, 0.8f, 0.2f, 0.25f, 0.35f, 0.35f, 0.60f },
     };
     return f;
 }
@@ -39,15 +25,22 @@ PresetManager::PresetManager (juce::AudioProcessorValueTreeState& s) : apvts (s)
 void PresetManager::installFactoryPack()
 {
     const auto root = getUserFolder();
-    const auto marker = root.getChildFile (".homekeys_pack_v3");
+    const auto marker = root.getChildFile (".homekeyi_pack_v1");
     if (marker.existsAsFile())
         return;
+
+    // reprend les presets perso de l'ancienne version HomeKeys (une seule fois)
+    const auto old = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("HomeKeys").getChildFile ("Presets");
+    if (old.isDirectory())
+        for (auto& f : old.findChildFiles (juce::File::findFiles, false, juce::String ("*") + extension))
+            if (! root.getChildFile (f.getFileName()).exists())
+                f.copyFileTo (root.getChildFile (f.getFileName()));
 
     // remplace l'ancienne version du pack (les presets perso ne sont pas touches)
     root.getChildFile ("HomeKey Preset").deleteRecursively();
     juce::ZipFile zip (new juce::MemoryInputStream (BinaryData::HomeKeyPresets_zip, BinaryData::HomeKeyPresets_zipSize, false), true);
     if (zip.uncompressTo (root, true).wasOk())
-        marker.replaceWithText ("HomeKeys pack v3");
+        marker.replaceWithText ("HomeKey I pack v1");
 }
 
 int PresetManager::importFrom (const juce::File& src)
@@ -87,7 +80,7 @@ int PresetManager::importFrom (const juce::File& src)
 juce::File PresetManager::getUserFolder()
 {
     auto dir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
-                   .getChildFile ("HomeKeys").getChildFile ("Presets");
+                   .getChildFile ("HomeKey I").getChildFile ("Presets");
     if (! dir.exists())
         dir.createDirectory();
     return dir;

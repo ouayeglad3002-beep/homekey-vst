@@ -1,7 +1,21 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PianoVoice.h"
+#include "SampleBank.h"
 #include "PresetManager.h"
+
+//==============================================================================
+// Constellation : cibles et formes de modulation
+namespace Constellation
+{
+    inline juce::StringArray targetNames()
+    {
+        return { "TONE", "FILTRE", "RESO", "DRIVE", "WOW", "CRUSH", "CHORUS", "REVERB", "NAPPE",
+                 "ESPACE", "METAL", "ANNEAU", "SHIMMER", "PITCH", "VOLUME", "TEXTURE", "AIR", "DELAY" };
+    }
+    inline juce::StringArray shapeNames() { return { "SINUS", "DERIVE", "S&H", "PULSE", "SPIRALE" }; }
+    enum Target { Tone, Filter, Reso, Drive, Wow, Crush, Chorus, Reverb, Pad, Space, Metal, Ring, Shimmer, Pitch, Volume, Texture, Air, Delay, NumTargets };
+}
 
 class HomeKeysProcessor : public juce::AudioProcessor
 {
@@ -17,11 +31,11 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "HomeKeys"; }
+    const juce::String getName() const override { return "HomeKey I"; }
     bool acceptsMidi() const override  { return true; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 6.0; }
+    double getTailLengthSeconds() const override { return 8.0; }
 
     int getNumPrograms() override;
     int getCurrentProgram() override;
@@ -37,17 +51,21 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     juce::MidiKeyboardState keyboardState;
     PresetManager presets;
+    juce::SharedResourcePointer<SampleBank> bank;
 
-    // Oscilloscope pour l'interface
+    // Oscilloscope
     static constexpr int scopeSize = 1024;
     std::array<float, scopeSize> scope {};
     std::atomic<int> scopeWritePos { 0 };
     std::atomic<float> outputLevel { 0.0f };
 
-    // Constellation (pour l'affichage)
+    // Constellation (affichage)
     static constexpr int numStars = 8;
     std::array<std::atomic<float>, numStars> starMod {};
-    // Chop actif (-1 = aucun) pour l'affichage
+    std::atomic<float> orbitAngle { 0.0f };
+    std::atomic<float> modWheel { 0.0f };
+
+    // Chop
     std::atomic<int> chopActive { -1 };
     static juce::StringArray chopNames() { return { "GATE", "PATTERN", "STUTTER", "REVERSE", "TAPE STOP", "HALF SPEED", "OCTAVE UP", "GLITCH" }; }
     static constexpr int chopKeyLow = 12; // notes MIDI 12..19 = declencheurs de chop
@@ -60,6 +78,7 @@ private:
     juce::dsp::StateVariableTPTFilter<float> toneFilter;
     juce::dsp::Chorus<float> chorus;
     juce::dsp::Reverb reverb;
+
     // --- GRAIN ---
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Lagrange3rd> wowDelay { 8192 };
     juce::SmoothedValue<float> wowAmt, driveAmt, crushAmt, vinylAmt;
@@ -70,15 +89,20 @@ private:
     float hissLp = 0, crackleEnv = 0, crackleLp = 0, crackleSign = 1;
     juce::Random grainRng;
     void processGrain (juce::AudioBuffer<float>&, int n);
+    void addVinyl (juce::AudioBuffer<float>&, int n);
     void processChop (juce::AudioBuffer<float>&, int n, double ppqStart, double samplesPerBeat);
     void processDelay (juce::AudioBuffer<float>&, int n, double samplesPerBeat);
+    void processShimmer (juce::AudioBuffer<float>&, int n);
+    void processAtmos (juce::AudioBuffer<float>&, int n);
     void updateConstellation (int n);
 
-    // valeurs effectives (parametres + constellation)
-    float effTone = 0, effDrive = 0, effWow = 0, effCrush = 0, effChorus = 0, effReverb = 0, effWidth = 0.7f, effLayer = 0.5f, effCut = 20000;
-    std::array<double, 8> starPhase {};
-    std::array<float, 8> starWalk {}, starWalkTarget {};
-    double sharedPhase = 0;
+    // modulations de la constellation, par cible
+    std::array<float, Constellation::NumTargets> mod {};
+    float effTone = 0, effDrive = 0, effWow = 0, effCrush = 0, effChorus = 0, effReverb = 0, effWidth = 0.7f,
+          effLayer = 0.5f, effCut = 20000, effReso = 0.1f, effShimmer = 0, effAir = 0, effDelay = 0, effVolume = 1;
+    std::array<double, numStars> starPhase {};
+    std::array<float, numStars> starWalk {}, starWalkTarget {}, starHold {}, starSmooth {};
+    juce::Random modRng;
 
     // Filtre synth
     juce::dsp::StateVariableTPTFilter<float> synthFilter;
@@ -89,6 +113,19 @@ private:
     int delayWrite = 0;
     float delayLpL = 0, delayLpR = 0;
 
+    // Shimmer (octave + reverb en boucle)
+    juce::AudioBuffer<float> shimBuf, shimBlock;
+    int shimWrite = 0;
+    double shimPhase = 0;
+    float shimFb = 0;
+    juce::dsp::Reverb shimVerb;
+
+    // Atmosphere
+    float activity = 0;
+    float airLp[2] {}, airBp[2] {}, airCenter = 900, airTarget = 900;
+    double humPhase = 0;
+    float humFlicker = 1, humFlickerTarget = 1, humLp = 0;
+
     // Chop
     juce::AudioBuffer<float> chopBuf;
     int chopWrite = 0;
@@ -98,7 +135,6 @@ private:
     float chopGain = 0;
     int keyChop = -1;
     juce::MidiBuffer filteredMidi;
-    void addVinyl (juce::AudioBuffer<float>&, int n);
 
     juce::SmoothedValue<float> volume;
     juce::SmoothedValue<float> cutoff;

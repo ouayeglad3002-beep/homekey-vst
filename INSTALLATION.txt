@@ -1,63 +1,50 @@
-HOMEKEYS - XENO PIANO ENGINE v2.0
+HOMEKEY I - XENO PIANO ENGINE v3.0
 ==================================
+Piano de reve, espace alien, cinematique lourd, dark fantasy, Backrooms.
 
 INSTALLER DANS FL STUDIO
 ------------------------
-1. Copie le dossier "HomeKeys.vst3" dans :
-      C:\Program Files\Common Files\VST3\
-2. Ouvre FL Studio > Options > Manage plugins (ou "Gerer les plugins").
-3. Clique sur "Find installed plugins" (Rechercher). HomeKeys apparait dans
-   la liste : coche l'etoile pour l'ajouter a tes favoris.
-4. Dans le Channel Rack : "+" > HomeKeys. C'est pret.
+1. Ferme FL Studio.
+2. Supprime l'ancien "HomeKeys.vst3" dans C:\Program Files\Common Files\VST3\
+   (sinon FL verra deux plugins).
+3. Copie "HomeKey I.vst3" dans C:\Program Files\Common Files\VST3\
+4. FL Studio > Options > Manage plugins > Find installed plugins.
+5. Channel Rack : "+" > HomeKey I.
+Les 71 presets s'installent tout seuls au premier lancement.
+Tes anciens presets perso (HomeKeys) sont repris automatiquement.
 
-HomeKeys.exe = version autonome (sans FL), pratique pour tester.
-
-LES 5 PIANOS
+LES 5 MONDES
 ------------
-DOUX         piano feutre, intime, sombre
-GRAVE        profond, sub-basse, long sustain
-ORCHESTRE    piano de concert brillant + cordes
-CINEMATIQUE  piano + nappe sombre, grand espace
-DREAMING     piano reveur, shimmer, chorus, reverb immense
-
-LES BOUTONS
------------
-TONE      brillance du piano          CHORUS   ondulation / largeur
-VELOCITY  sensibilite a la frappe     REVERB   quantite d'espace
-RELEASE   duree apres relachement     SIZE     taille de la salle
-LAYER     quantite de nappe/cordes    VOLUME   volume general
-WIDTH     largeur stereo
-La pedale de sustain (CC64) est geree.
-
-GRAIN
------
-OCTAVE    transpose de -2 a +2 octaves (boite a musique, trap grave...)
-DRIVE     saturation chaude de bande magnetique
-WOW       ondulation de cassette (pleurage)
-CRUSH     grain numerique lo-fi
-VINYL     souffle et craquements de vinyle
-
-PRESETS
--------
-PACK "HomeKey Preset" (63 presets) : il s'installe TOUT SEUL au premier
-lancement. Classement : Keys, Bass, Leads, Bells, Pads, Plucks, Lo-Fi,
-Cinematic, Chops, Constellation. Le style est entre crochets : [Trap]...
-- IMPORT : ajoute un dossier, un .zip ou des .hkpreset (confirmation OK).
+DREAMING   piano de reve, shimmer, nappes infinies
+NEBULA     espace alien : metal, anneau, textures etranges
+CINEMA     lourd et epique, grandes salles, cordes, gong
+ABYSS      dark fantasy, basses lourdes et metalliques
+BACKROOMS  liminal : neon qui gresille, bande usee, piece etouffee
 
 ONGLETS
 -------
-PIANO          : corps, espace et grain
-SYNTH          : filtre LP/BP/HP, attack, decay, hammer, sub, unison,
-                 fine, delay ping-pong synchronise au tempo
-CONSTELLATION  : LFO aleatoire. Glisse les etoiles (loin du centre =
-                 plus intense). DEPTH = quantite, RATE = vitesse, RANDOM.
-CHOP           : CHOP ON = chop permanent, ou joue dans le piano roll :
-                 C1 Gate, C#1 Pattern, D1 Stutter, D#1 Reverse,
-                 E1 Tape Stop, F1 Half Speed, F#1 Octave Up, G1 Glitch
+SON            corps (tone, velocity, release, nappe, width), espace, grain
+SYNTH          SOURCES : piano (Salamander), harmonic, metal, anneau,
+                         texture (gong, cymbale, vibes, cloche, enclume...)
+               FILTRE / AMPLI : cutoff, reso, LP/BP/HP, attack, decay, hammer
+               ATMOSPHERE : shimmer (reve), air (vent spatial),
+                            hum (neon des Backrooms), delay synchronise
+CONSTELLATION  8 etoiles = 8 modulations. Glisse-les :
+               loin du centre = plus fort, tourner autour = plus rapide.
+               Clic droit (ou menus a droite) : CIBLE et FORME de l'etoile.
+               DEPTH, RATE, CHAOS (hasard), ORBIT (rotation),
+               VARIATION (chaque note un peu differente), MUTATION.
+CHOP           CHOP ON, ou notes C1 a G1 dans le piano roll.
 
-- 15 presets d'usine (3 par piano), fleches < > pour naviguer.
-- SAVE : sauvegarde ton son comme nouveau preset.
-- DEL  : supprime un de tes presets.
-- DOSSIER : ouvre Documents\HomeKeys\Presets
-  Tu peux y ajouter / partager des fichiers .hkpreset : ils apparaissent
-  automatiquement sous "MES PRESETS".
+RANDOM SON (en haut, toujours visible)
+--------------------------------------
+Cree un son nouveau a chaque clic, coherent avec les mondes.
+MUTATION (onglet CONSTELLATION) : 0.2 = petite variation du son actuel,
+1.0 = son totalement neuf. LOCK = garde le monde actuel.
+Le son genere recoit un nom ; SAVE pour le garder.
+
+AUTRES
+------
+Pitch bend : +/- 2 demi-tons. Molette de modulation : augmente la Constellation.
+IMPORT : ajoute un dossier, un .zip ou des .hkpreset (confirmation OK).
+Bouton "i" : credits des banques de sons (voir CREDITS.txt).

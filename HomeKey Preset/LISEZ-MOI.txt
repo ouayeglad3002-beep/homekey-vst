@@ -1,4 +1,5 @@
-HOMEKEY PRESET - pack officiel HomeKeys v2
-Ce pack s'installe TOUT SEUL au premier lancement de HomeKeys v2.
-Pour ajouter d'autres presets : bouton IMPORT dans HomeKeys.
-Le style est indique entre crochets : [Trap], [Love], [Lo-Fi]...
+HOMEKEY PRESET - pack officiel HomeKey I v3
+Ce pack s'installe TOUT SEUL au premier lancement de HomeKey I.
+Pour ajouter d'autres presets : bouton IMPORT dans HomeKey I.
+Astuce : charge un preset puis clique RANDOM SON avec MUTATION basse
+(0.2 - 0.4) pour obtenir des variations a chaque clic.

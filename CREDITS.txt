@@ -1,0 +1,25 @@
+HOMEKEY I - CREDITS
+===================
+
+PIANO
+  Salamander Grand Piano V3
+  Auteur : Alexander Holm
+  Licence : Creative Commons Attribution 3.0 (CC-BY 3.0)
+  https://creativecommons.org/licenses/by/3.0/
+  Source : https://archive.org/details/SalamanderGrandPianoV3
+           https://github.com/sfzinstruments/SalamanderGrandPiano
+  Modifications pour HomeKey I : 4 couches de velocite (v4, v8, v12, v16),
+  notes raccourcies avec fondu, reechantillonnage 44.1 kHz, conversion Ogg Vorbis.
+
+TEXTURES METAL (gong, cymbale a l'archet, vibraphone a l'archet,
+cloche tubulaire, enclume, frein a l'archet, cloche nepalaise)
+  Versilian Community Sample Library (VCSL)
+  Auteur : Versilian Studios / Sam Gossner
+  Licence : Creative Commons CC0 1.0 (domaine public)
+  https://github.com/sgossner/VCSL
+  Modifications : extraits raccourcis, normalises, convertis en Ogg Vorbis.
+
+MOTEUR, EFFETS, CONSTELLATION, PRESETS ET INTERFACE
+  HomeKey I
+
+Construit avec JUCE (https://juce.com).

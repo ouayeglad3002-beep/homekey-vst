@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(HomeKeys VERSION 1.0.0)
+project(HomeKeys VERSION 3.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,8 +18,8 @@ else()
 endif()
 
 juce_add_plugin(HomeKeys
-    COMPANY_NAME "HomeKeys Audio"
-    PRODUCT_NAME "HomeKeys"
+    COMPANY_NAME "HomeKey Audio"
+    PRODUCT_NAME "HomeKey I"
     PLUGIN_MANUFACTURER_CODE Hmky
     PLUGIN_CODE Hkp1
     IS_SYNTH TRUE
@@ -34,13 +34,15 @@ juce_add_plugin(HomeKeys
 juce_generate_juce_header(HomeKeys)
 
 # Pack de presets integre au plugin (installe automatiquement au premier lancement)
-juce_add_binary_data(HomeKeysData SOURCES Resources/HomeKeyPresets.zip)
+juce_add_binary_data(HomeKeysData SOURCES Resources/HomeKeyPresets.zip Resources/Samples.zip)
 
 target_sources(HomeKeys PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/PianoVoice.cpp
-    Source/PresetManager.cpp)
+    Source/PresetManager.cpp
+    Source/SampleBank.cpp
+    Source/SoundDesigner.cpp)
 
 target_compile_definitions(HomeKeys PUBLIC
     JUCE_WEB_BROWSER=0

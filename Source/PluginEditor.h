@@ -5,26 +5,30 @@
 //==============================================================================
 namespace AlienColours
 {
-    const juce::Colour bg0     { 0xff05070a };
-    const juce::Colour bg1     { 0xff0b1016 };
-    const juce::Colour panel   { 0xff0e141b };
-    const juce::Colour edge    { 0xff1c2a33 };
-    const juce::Colour text    { 0xffcfe9de };
-    const juce::Colour dim     { 0xff5f7a73 };
-    const juce::Colour acid    { 0xff39ff8f };
+    const juce::Colour bg0     { 0xff030508 };
+    const juce::Colour bg1     { 0xff0a0f15 };
+    const juce::Colour panel   { 0xff10171e };
+    const juce::Colour edge    { 0xff2a3642 };
+    const juce::Colour steel   { 0xff8d9aa7 };
+    const juce::Colour text    { 0xffdfeaf2 };
+    const juce::Colour dim     { 0xff6c7d8b };
+    const juce::Colour acid    { 0xff3ff6ff };
 
     inline juce::Colour forType (int t)
     {
         switch (t)
         {
-            case 0:  return juce::Colour (0xff8affc1); // Doux       : menthe
-            case 1:  return juce::Colour (0xffa46bff); // Grave      : violet
-            case 2:  return juce::Colour (0xff29e6ff); // Orchestre  : cyan
-            case 3:  return juce::Colour (0xffc6ff3d); // Cinematique: lime toxique
-            default: return juce::Colour (0xffff4fd8); // Dreaming   : magenta
+            case 0:  return juce::Colour (0xffff8ae2); // DREAMING  : lilas-rose
+            case 1:  return juce::Colour (0xff3ff6ff); // NEBULA    : cyan alien
+            case 2:  return juce::Colour (0xff8fc8ff); // CINEMA    : bleu glacier
+            case 3:  return juce::Colour (0xffff3a5c); // ABYSS     : cramoisi
+            default: return juce::Colour (0xffe9e35a); // BACKROOMS : neon jaune
         }
     }
 }
+
+// formes "cristal" : rectangle aux coins coupes
+juce::Path chamfer (juce::Rectangle<float> r, float cut);
 
 //==============================================================================
 class AlienLookAndFeel : public juce::LookAndFeel_V4
@@ -40,6 +44,7 @@ public:
     juce::Font getComboBoxFont (juce::ComboBox&) override;
     juce::Font getTextButtonFont (juce::TextButton&, int) override;
     void drawPopupMenuBackground (juce::Graphics&, int w, int h) override;
+    juce::Label* createSliderTextBox (juce::Slider&) override;
 };
 
 //==============================================================================
@@ -65,7 +70,6 @@ public:
     explicit AlienScope (HomeKeysProcessor& p) : proc (p) {}
     void paint (juce::Graphics&) override;
     juce::Colour accent = AlienColours::acid;
-    float phase = 0.0f;
 private:
     HomeKeysProcessor& proc;
 };
@@ -91,14 +95,16 @@ public:
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
-    void randomize();
     juce::Colour accent = AlienColours::acid;
     float phase = 0.0f;
+    int selected = 0;
+    std::function<void (int)> onSelect;
 private:
     HomeKeysProcessor& proc;
     int dragging = -1;
     juce::Point<float> starPos (int i) const;
-    juce::Rectangle<float> field() const { return getLocalBounds().toFloat().reduced (14.0f); }
+    juce::Rectangle<float> field() const { return getLocalBounds().toFloat().reduced (16.0f); }
+    void showStarMenu (int star);
 };
 
 //==============================================================================
@@ -134,13 +140,16 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void setPage (int p);
 
 private:
     void timerCallback() override;
     void refreshPresetBox();
     void showSaveDialog();
     void showImportMenu();
-    void setPage (int p);
+    void showCredits();
+    void selectStar (int i);
+    void randomSound();
 
     HomeKeysProcessor& proc;
     AlienLookAndFeel lnf;
@@ -162,13 +171,18 @@ private:
     std::vector<std::unique_ptr<Knob>> knobs;
     std::map<juce::String, Knob*> knobById;
     Knob& addKnob (const juce::String& id, const juce::String& title, int page, const juce::String& suffix = {});
-    void placeRow (juce::Rectangle<int> area, const juce::StringArray& ids);
+    void placeRow (juce::Rectangle<int> area, const juce::StringArray& ids, int maxW = 104);
 
     std::array<juce::TextButton, 4> tabs;
     int page = 0;
 
-    juce::TextButton chopOn { "CHOP OFF" }, randomBtn { "RANDOM" };
+    juce::TextButton randomBtn { "RANDOM SON" }, lockBtn { "LOCK" }, starsBtn { "RANDOM ETOILES" }, soundBtn { "RANDOM SON" };
+    juce::TextButton chopOn { "CHOP OFF" }, creditBtn { "i" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> chopAttach;
+
+    juce::Label starLabel;
+    juce::ComboBox starTarget, starShape;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> targetAttach, shapeAttach;
 
     juce::ComboBox presetBox;
     juce::TextButton prevBtn { "<" }, nextBtn { ">" }, saveBtn { "SAVE" }, delBtn { "DEL" }, importBtn { "IMPORT" }, folderBtn { "DOSSIER" };

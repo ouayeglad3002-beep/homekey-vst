@@ -25,9 +25,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package | Out-Null
-          Copy-Item -Recurse "build/HomeKeys_artefacts/Release/VST3/HomeKeys.vst3" "package/HomeKeys.vst3"
-          Copy-Item "build/HomeKeys_artefacts/Release/Standalone/HomeKeys.exe" "package/HomeKeys.exe"
+          Copy-Item -Recurse "build/HomeKeys_artefacts/Release/VST3/HomeKey I.vst3" "package/HomeKey I.vst3"
+          Copy-Item "build/HomeKeys_artefacts/Release/Standalone/HomeKey I.exe" "package/HomeKey I.exe"
           Copy-Item "INSTALLATION.txt" "package/INSTALLATION.txt"
+          Copy-Item "CREDITS.txt" "package/CREDITS.txt"
           Copy-Item -Recurse "HomeKey Preset" "package/HomeKey Preset"
 
       - name: Telecharger le resultat
@@ -39,11 +40,11 @@ jobs:
       - name: Publier le zip dans la branche builds
         shell: pwsh
         run: |
-          Compress-Archive -Path package/* -DestinationPath HomeKeys-Windows.zip -Force
+          Compress-Archive -Path package/* -DestinationPath HomeKeyI-Windows.zip -Force
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git checkout --orphan builds
           git rm -rf --cached . | Out-Null
-          git add -f HomeKeys-Windows.zip
+          git add -f HomeKeyI-Windows.zip
           git commit -m "Build ${{ github.sha }}"
           git push -f origin builds
