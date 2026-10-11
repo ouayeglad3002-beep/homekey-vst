@@ -16,6 +16,7 @@ public:
     };
 
     void prepare (double sampleRate);
+    void resetTracking();   // apres un saut de lecture : oublie la note en cours, garde la gamme
     // analyse un bloc mono ; index absolu du 1er echantillon ; renvoie les nouvelles notes
     void process (const float* mono, int n, int64_t firstSample, std::vector<NoteEvent>& out);
 
@@ -45,6 +46,8 @@ private:
     float curNote = -1.0f, pendingNote = -1.0f, pendingSum = 0.0f;
     int pendingCount = 0, unvoicedCount = 0;
     float lastRmsDb = -100.0f, lastMidi = 0.0f;
+    float hopDurS = 0.0058f;
+    std::array<float, 6> recentDb {}; int recentPos = 0;   // pour detecter l'attaque d'un accord
     int64_t lastNoteSample = -1000000;
     // tonalite
     std::array<float, 12> chroma {};
@@ -60,6 +63,20 @@ private:
     float noteRate = 0.0f, avgMidi = 64.0f, activity = 0.0f;
     int heard = 0;
 
-    float yin (float& clarity);
+    // --- pYIN : candidats probabilistes + Viterbi a retard fixe ---
+    static constexpr int maxCand = 5, lag = 4, slots = lag + 1;
+    struct Frame
+    {
+        int64_t sample = 0; float rms = 0, rmsDb = -100;
+        int n = 0; float midi[maxCand] {}; float logp[maxCand + 1] {};   // dernier = non voise
+        float score[maxCand + 1] {}; int back[maxCand + 1] {};
+    };
+    std::array<Frame, slots> frames {};
+    int64_t frameCount = 0;
+    std::array<float, 100> betaW {};
+    void cmndf();
+    void candidates (Frame& f);
+    bool viterbiPush (Frame& f, Frame& decided, int& state);
+    void segment (const Frame& f, bool voiced, float m, std::vector<NoteEvent>& out);
     void updateKey();
 };

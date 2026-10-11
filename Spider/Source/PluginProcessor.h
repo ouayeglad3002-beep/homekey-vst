@@ -11,6 +11,8 @@ public:
     void releaseResources() override {}
     bool isBusesLayoutSupported (const BusesLayout&) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    // bypass : l'audio passe, retarde de la meme latence (la piste reste calee)
+    void processBlockBypassed (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -35,7 +37,10 @@ public:
 
 private:
     int64_t sampleCounter = 0;
-    double internalPpq = 0.0;
+    double internalPpq = 0.0, expectedPpq = 0.0;
+    bool wasPlaying = false, wasBypassed = false;
+    std::atomic<bool> snapPreset { false };
+    juce::AudioBuffer<float> bypassDelay; int bypassPos = 0;
     int lastPreset = -1;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpiderProcessor)
 };

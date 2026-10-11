@@ -17,6 +17,21 @@ CONSEILS
   (octaves, rythme, echos, espace) pour rester juste.
 - Les notes fortes (premier temps de chaque mesure) restent en place :
   le deroule de ta melodie est garde.
+- v1.3 : mecanisme professionnel.
+  * La toile apprise (gamme, registre, densite, volume) est SAUVEGARDEE dans
+    le projet FL : l'export sonne exactement comme la lecture, et un projet
+    rouvert garde la meme transformation.
+  * Spider apprend sur les 16 premieres notes (le compteur s'affiche au
+    centre : 3/16, 4/16...). Double-clic au centre de la toile = reapprendre.
+  * Nouvelle oreille (pYIN + profils Krumhansl et EDMA) : moins d'erreurs
+    de hauteur, meilleure gamme sur la trap et l'electro.
+  * Nouvelle voix TD-PSOLA : notes plus justes, timbre conserve meme sur
+    les grands intervalles (fini l'effet "chipmunk").
+  * Accords : une voix polyphonique (Signalsmith Stretch, licence MIT)
+    harmonise dans la gamme.
+  * Robustesse : sauts et boucles de la tete de lecture, blocs de toutes
+    tailles, bypass cale sur la latence (100 ms, compensee par FL),
+    teste avec pluginval (niveau 7).
 - v1.2 : nouvel ecran plus compact (660 x 460). Logo trace a l'encre, toile
   en fils noirs vernis qui bougent comme une matiere vivante. Les 15 fils
   travaillent en interne : tu ne vois que la toile et les presets.
@@ -28,7 +43,7 @@ CONSEILS
   4 mesures, repete a l'identique. Harmonies, echo, reverse, espace et
   lumiere sont constants.
 - Changer de preset retisse la toile (fondu de 3 s), puis tout redevient fixe.
-- Spider ajoute ~46 ms de latence, compensee automatiquement par FL Studio.
+- Spider ajoute 100 ms de latence, compensee automatiquement par FL Studio.
 - Le volume de sortie est aligne sur celui d'entree.
 
 LES 10 PRESETS
@@ -48,3 +63,7 @@ En majeur Spider eclaircit, ornemente vers le haut et fait monter ses
 echos ; en mineur il assombrit, ajoute de l'espace et fait descendre ses
 echos. Une melodie dense recoit moins d'effets rythmiques, une melodie
 aeree recoit plus d'echos et de glisses.
+
+Credits : Signalsmith Stretch et Signalsmith Linear (c) Signalsmith Audio,
+licence MIT (voir ThirdParty dans le code source). Profils de tonalite EDMA :
+A. Faraldo et al., 2016.

@@ -21,6 +21,14 @@ namespace Theory
         return minor ? min : maj;
     }
 
+    // Profils EDMA (Faraldo et al. 2016, musique electronique ; valeurs publiees dans Essentia)
+    inline const std::array<float, 12>& profileEdma (bool minor)
+    {
+        static const std::array<float, 12> maj { 1.00f, 0.29f, 0.50f, 0.40f, 0.60f, 0.56f, 0.32f, 0.80f, 0.31f, 0.45f, 0.42f, 0.39f };
+        static const std::array<float, 12> min { 1.00f, 0.31f, 0.44f, 0.58f, 0.33f, 0.49f, 0.29f, 0.78f, 0.43f, 0.29f, 0.53f, 0.32f };
+        return minor ? min : maj;
+    }
+
     struct Key { int tonic = 0; bool minor = true; };
 
     inline const char* noteName (int pc)

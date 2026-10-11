@@ -34,18 +34,35 @@ const Preset& Web::preset (int i) { return presets[juce::jlimit (0, numPresets -
 void Engine::prepare (double sampleRate, int maxBlock)
 {
     sr = sampleRate;
-    L = (int) std::round (0.046 * sr);
+    L = (int) std::round (0.10 * sr);      // 100 ms d'anticipation (compensee par l'hote)
+    Dt = (int64_t) std::round (0.064 * sr);
     analyzer.prepare (sr);
     int sz = 1; while (sz < (int) (sr * 3.0)) sz <<= 1;
     hist.init (sz * 2); echoRing.init (sz); revRing.init (sz);
     for (auto& c : past) c.at = -1; pastPos = 0; echoNote = { -1, -1, -1 };
     for (auto& t : echoTap) { t.reset(); t.alwaysShift = false; }
+    maxBlk = maxBlock;
     mono.assign ((size_t) maxBlock + 16, 0.0f);
-    events.reserve (64);
+    events.reserve (256);
     stutBuf.setSize (2, (int) sr + 16);
     stutBuf.clear();
     stutState = 0;
-    for (auto* s : { &mainV, &h1V, &h2V, &echoV }) s->reset();
+    for (auto* s : { &mainV, &h1V, &h2V }) s->init (sr);
+    echoV.reset();
+    epochs.init (sz * 2);
+    for (auto& pp : periods) pp = { -1, 400.0f };
+    periodHead = 0;
+    // voix d'accords : blocs de 100 ms (resolution suffisante pour separer les notes d'un accord)
+    {
+        const int blk = (int) std::round (0.10 * sr);
+        chord.configure (2, blk, blk / 4, false);
+        chord.setFreqMap ([this] (float f) { return chordMap (f); });
+        chord.reset();
+        L = juce::jmax (L, chord.inputLatency() + chord.outputLatency());
+        chordDelay = juce::jmax (0, L - (chord.inputLatency() + chord.outputLatency()));
+        for (int c = 0; c < 2; ++c) { chIn[c].assign ((size_t) maxBlock + 16, 0.0f); chOut[c].assign ((size_t) maxBlock + 16, 0.0f); }
+        chordGain = chordTarget = 0.0f;
+    }
     h1Gain = h1Target = h2Gain = h2Target = 0.0f; accent = accentTarget = 1.0f;
     cmdHead = cmdTail = 0; hasActive = false; graceEnd = 0; h1Start = h2Start = -1;
     prevNoteSample = -10000000;
@@ -55,9 +72,9 @@ void Engine::prepare (double sampleRate, int maxBlock)
     juce::dsp::ProcessSpec spec2 { sr, (juce::uint32) maxBlock, 2 };
     reverb.prepare (spec2); reverb.reset();
     revCount = 0;
-    locked = false; otherKeySamples = 0;
     levelIn = levelOut = 0.0f; levelGain = 1.0f; limEnv = 0.0f;
-    if (morphT >= 1.0f) startMorphTo (presetIdx), morphT = 1.0f, cur = to;
+    setPresetImmediate (presetIdx);
+    if (locked) { levelGain = lockGain; levelOut = 1.0e-4f; levelIn = lockGain * lockGain * 1.0e-4f; }
 }
 
 void Engine::startMorphTo (int index)
@@ -69,23 +86,52 @@ void Engine::startMorphTo (int index)
     to[NumParams] = pr.grit;
     nextH1 = pr.h1Type; nextH2 = pr.h2Type; nextEvolve = pr.evolve;
     morphT = 0.0f;
-    if (locked) lockTo (lockKey);   // nouvelle graine, meme gamme
+    if (locked) applyLearned();   // nouvelle graine, meme gamme
 }
 
 void Engine::setPreset (int index) { startMorphTo (index); }
 
+void Engine::setPresetImmediate (int index)
+{
+    startMorphTo (index);
+    morphT = 1.0f; cur = to;
+    h1Type = nextH1; h2Type = nextH2; evolve = nextEvolve;
+}
+
 //==============================================================================
 // Verrouillage : des que la gamme est sure, Spider fige l'humeur, l'axe et la graine
 // de la toile. Tout le morceau est ensuite transforme avec ces memes choix.
-void Engine::lockTo (Theory::Key k)
+uint64_t Engine::pack (const Learned& l)
 {
-    locked = true;
-    lockKey = k;
-    lockRegister = analyzer.registerMidi();
-    lockDensity = analyzer.density();
-    axisDeg = Theory::degreeOf (lockRegister, k).deg;
+    const uint64_t reg = (uint64_t) juce::jlimit (0, 65535, (int) std::lround (l.reg * 100.0f));
+    const uint64_t den = (uint64_t) juce::jlimit (0, 65535, (int) std::lround (l.dens * 100.0f));
+    const uint64_t gn  = (uint64_t) juce::jlimit (0, 65535, (int) std::lround (l.gain * 10000.0f));
+    return (l.valid ? 1ull : 0ull) | ((l.minor ? 1ull : 0ull) << 1) | ((uint64_t) (l.tonic & 15) << 2) | (reg << 8) | (den << 24) | (gn << 40);
+}
+
+Engine::Learned Engine::unpack (uint64_t v)
+{
+    Learned l;
+    l.valid = (v & 1ull) != 0; l.minor = ((v >> 1) & 1ull) != 0; l.tonic = (int) ((v >> 2) & 15ull) % 12;
+    l.reg = (float) ((v >> 8) & 0xffffull) / 100.0f; l.dens = (float) ((v >> 24) & 0xffffull) / 100.0f;
+    l.gain = (float) ((v >> 40) & 0xffffull) / 10000.0f;
+    if (l.gain < 0.2f || l.gain > 4.0f) l.gain = 1.0f;
+    return l;
+}
+
+void Engine::publishLearned()
+{
+    Learned l; l.valid = locked; l.tonic = lockKey.tonic; l.minor = lockKey.minor; l.reg = lockRegister; l.dens = lockDensity; l.gain = lockGain;
+    learnedPacked = pack (l);
+}
+
+// Tout ce que la toile decide decoule de 3 valeurs apprises (gamme, registre, densite) + le preset
+void Engine::applyLearned()
+{
+    const auto k = lockKey;
+    const float tonicMidi = (float) k.tonic + 12.0f * std::round ((lockRegister - (float) k.tonic) / 12.0f);
+    axisDeg = Theory::degreeOf (tonicMidi, k).deg;
     seed = (uint32_t) presetIdx * 977u + (uint32_t) k.tonic * 31u + (k.minor ? 7u : 0u) + 13u;
-    otherKeySamples = 0;
 
     moodDelta.fill (0.0f);
     if (! k.minor) { moodDelta[Light] = 0.12f; moodDelta[Ornament] = 0.05f; moodDelta[Accent] = 0.08f; }
@@ -103,26 +149,72 @@ void Engine::lockTo (Theory::Key k)
     }
 }
 
-void Engine::updateMood (int n)
+void Engine::updateMood (int)
 {
-    const auto k = analyzer.key();
-    const bool sure = analyzer.keyConfidence() >= 0.3f && analyzer.notesHeard() >= 6;
-    if (sure && ! locked) lockTo (k);
-    else if (locked && sure && (k.tonic != lockKey.tonic || k.minor != lockKey.minor))
+    if (relearnPending.exchange (false))
     {
-        // une vraie modulation doit tenir 8 s avant que la toile ne change de gamme
-        otherKeySamples += n;
-        if (otherKeySamples > (int64_t) (8.0 * sr)) lockTo (k);
+        locked = false; learnN = learnE = 0; publishLearned();
     }
-    else otherKeySamples = 0;
+    if (restorePending.exchange (false))
+    {
+        const auto l = unpack (restorePacked.load());
+        learnN = learnE = 0;
+        locked = l.valid;
+        if (l.valid)
+        {
+            lockKey = { l.tonic, l.minor }; lockRegister = l.reg; lockDensity = l.dens; lockGain = l.gain;
+            levelGain = lockGain; levelOut = 1.0e-4f; levelIn = lockGain * lockGain * 1.0e-4f;
+            applyLearned();
+        }
+        publishLearned();
+    }
+
+    const auto k = analyzer.key();
+    const float conf = analyzer.keyConfidence();
+    const bool melodyReady = conf >= 0.3f && analyzer.notesHeard() >= 6 && learnN >= learnNotes;
+    const bool chordsReady = conf >= 0.5f && learnE >= learnNotes && learnN < 4;      // piste d'accords
+    if (! locked && (melodyReady || chordsReady))
+    {
+        // apprentissage sur le CONTENU : registre = mediane des notes, densite = 1 / intervalle median
+        const int nv = juce::jmin (learnN, learnNotes);
+        std::array<float, learnNotes> m = learnMidi;
+        std::sort (m.begin(), m.begin() + nv);
+        lockKey = k;
+        lockRegister = nv >= 4 ? 0.5f * (m[(size_t) (nv - 1) / 2] + m[(size_t) nv / 2]) : 60.0f;
+        std::array<double, learnNotes - 1> ioi {};
+        for (int i = 1; i < learnNotes; ++i) ioi[(size_t) i - 1] = (double) (learnAt[(size_t) i] - learnAt[(size_t) i - 1]) / sr;
+        std::sort (ioi.begin(), ioi.end());
+        lockDensity = (float) juce::jlimit (0.2, 20.0, 1.0 / juce::jmax (0.05, ioi[(learnNotes - 1) / 2]));
+        lockGain = levelGain;
+        locked = true;
+        applyLearned();
+        publishLearned();
+    }
+    learnCount = locked ? learnNotes : juce::jmin (learnNotes, juce::jmax (learnN, learnE));
+    {
+        static const int h1d[6] = { 2, 2, -5, 1, 3, -7 };
+        static const int h2d[6] = { 7, -7, 4, -3, 5, 3 };
+        chordDeg = eff[Harmony1] >= eff[Harmony2] ? (h1Type == 0 ? (lockKey.minor ? -2 : 2) : h1d[h1Type]) : h2d[h2Type];
+    }
 
     for (int i = 0; i < NumParams; ++i)
         eff[(size_t) i] = juce::jlimit (0.0f, 1.0f, cur[(size_t) i] + (locked ? moodDelta[(size_t) i] : 0.0f));
     for (int i = 0; i < NumParams; ++i) shown[(size_t) i] = eff[(size_t) i];
     const auto shownKey = locked ? lockKey : k;
     keyTonic = shownKey.tonic; keyMinor = shownKey.minor ? 1 : 0;
-    keyConf = locked ? juce::jmax (0.3f, analyzer.keyConfidence()) : analyzer.keyConfidence();
+    keyConf = locked ? 1.0f : analyzer.keyConfidence();
     density = locked ? lockDensity : analyzer.density();
+}
+
+void Engine::onTransportJump()
+{
+    cmdHead = cmdTail = 0; hasActive = false;
+    stutState = 0; graceEnd = 0; h1Start = h2Start = -1;
+    h1Target = h2Target = 0.0f; accentTarget = 1.0f;
+    mainV.setTarget (0.0f);
+    for (auto& c : past) c.at = -1;
+    echoNote = { -1, -1, -1 };
+    analyzer.resetTracking();
 }
 
 //==============================================================================
@@ -155,13 +247,18 @@ Engine::Cmd Engine::decide (const Analyzer::NoteEvent& e, double ppqAtNote, doub
     v.voiced = e.voiced;
     v.at = e.startSample;
 
+    if (! locked && learnE < learnNotes)
+    {
+        if (learnE == 0) learnFirst = e.startSample;
+        learnAt[(size_t) learnE++] = e.startSample;
+        learnLast = e.startSample;
+    }
     if (! e.voiced)
     {
+        // accord / son complexe : la voix d'accords (polyphonique) prend le relais
         c.mainSemis = 0.0f;
         c.h1Gain = 0.0f;
-        const bool oct = h2Type <= 1;
-        c.h2Semis = oct ? (h2Type == 0 ? 12.0f : -12.0f) : 0.0f;
-        c.h2Gain = oct ? eff[Harmony2] * 0.5f : 0.0f;
+        c.h2Gain = 0.0f;
         if (posR (12) < eff[Stutter] * 0.7f) { c.stutRepeats = 2 + (int) (posR (13) * 2.0f); c.stutLen = (int) (spb / 4.0); c.stutReverse = posR (14) < eff[Reverse]; }
         v.newMidi = e.midi;
         pushViz (v);
@@ -169,8 +266,11 @@ Engine::Cmd Engine::decide (const Analyzer::NoteEvent& e, double ppqAtNote, doub
     }
 
     ++notesSeen;
+    c.period = (float) (sr / juce::jmax (30.0f, e.f0));
+    periods[(size_t) (periodHead++ & 31)] = { e.startSample, c.period };
     if (! locked)
     {
+        if (learnN < learnNotes) learnMidi[(size_t) learnN++] = e.midi;
         // la toile n'est pas encore tissee : on ecoute, on laisse passer la note
         v.newMidi = e.midi;
         pushViz (v);
@@ -247,6 +347,26 @@ Engine::Cmd Engine::decide (const Analyzer::NoteEvent& e, double ppqAtNote, doub
     return c;
 }
 
+float Engine::periodAt (int64_t pos) const
+{
+    float P = epochs.period; int64_t bestAt = -1;
+    for (auto& pp : periods) if (pp.first >= 0 && pp.first <= pos && pp.first > bestAt) { bestAt = pp.first; P = pp.second; }
+    return P;
+}
+
+// carte diatonique : chaque frequence monte (ou descend) de 'chordDeg' degres dans la gamme apprise
+float Engine::chordMap (float f) const
+{
+    const float hz = f * (float) sr;
+    if (hz < 40.0f) return f;
+    const float midi = 69.0f + 12.0f * std::log2 (hz / 440.0f);
+    const auto d = Theory::degreeOf (midi, lockKey);
+    // sortie calee exactement sur la gamme : l'estimation spectrale d'un bloc court est trop grossiere
+    // pour conserver l'ecart d'intonation sans le deformer
+    const float out = Theory::midiOfDegree (d.deg + chordDeg, lockKey);
+    return 440.0f * std::exp2 ((out - 69.0f) / 12.0f) / (float) sr;
+}
+
 void Engine::pushViz (const Viz& v)
 {
     int s1, n1, s2, n2;
@@ -276,7 +396,7 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
     updateMood (n);
 
     // --- ecoute ---
-    if ((int) mono.size() < n) mono.resize ((size_t) n);
+    jassert (n <= maxBlk);
     for (int i = 0; i < n; ++i) mono[(size_t) i] = 0.5f * (L0[i] + R0[i]);
     events.clear();
     analyzer.process (mono.data(), n, firstSample, events);
@@ -310,11 +430,43 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
     const int fade = 64;
     double blockInPow = 0.0;
 
+    // --- voix d'accords (polyphonique) : calculee pour le bloc, alignee sur la sortie ---
+    chordOn = locked && juce::jmax (eff[Harmony1], eff[Harmony2]) > 0.02f;
+    if (chordOn)
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            const int64_t src = firstSample + i - chordDelay;
+            float a, b;
+            if (src >= firstSample) { a = L0[src - firstSample]; b = R0[src - firstSample]; }
+            else { const size_t k = (size_t) ((hist.w - 1 - (firstSample - 1 - src)) & hist.mask); a = hist.l[k]; b = hist.r[k]; }
+            // passe-haut 140 Hz : la voix d'accords n'harmonise pas la basse (trop imprecise et trop lourde)
+            const float k = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 140.0f / (float) sr);
+            float xs[2] = { a, b };
+            for (int c = 0; c < 2; ++c)
+            {
+                chordHp[c][0] += k * (xs[c] - chordHp[c][0]);
+                chordHp[c][1] += k * (chordHp[c][0] - chordHp[c][1]);
+                xs[c] -= chordHp[c][1];
+            }
+            chIn[0][(size_t) i] = xs[0]; chIn[1][(size_t) i] = xs[1];
+        }
+        float* ins[2] = { chIn[0].data(), chIn[1].data() };
+        float* outs[2] = { chOut[0].data(), chOut[1].data() };
+        chord.process (ins, n, outs, n);
+    }
+
     for (int i = 0; i < n; ++i)
     {
         const int64_t t = firstSample + i;
         const int64_t outIdx = t - L;
         hist.push (L0[i], R0[i]);
+        epochs.push (0.5f * (L0[i] + R0[i]));
+        {
+            const float P = periodAt (t - Dt);
+            if (P != epochs.period) epochs.setPeriod (P, sr);
+            epochs.advance (t - Dt);
+        }
         blockInPow += L0[i] * L0[i] + R0[i] * R0[i];
 
         // commandes arrivees a echeance
@@ -325,7 +477,7 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
             cmdHead = (cmdHead + 1) & 63;
             const float gk = 1.0f - std::exp (-1.0f / (0.001f * active.glideMs * (float) sr));
             mainV.glideK = gk;
-            for (auto* s : { &mainV, &h1V, &h2V }) s->setWindow (active.window);
+            if (active.voiced) for (auto* s : { &mainV, &h1V, &h2V }) s->setPeriod (active.period);
             if (active.graceLen > 0) { mainV.setTarget (active.graceSemis); mainV.glideK = 0.02f; graceEnd = active.at + active.graceLen; }
             else { mainV.setTarget (active.mainSemis); graceEnd = 0; }
             h1Start = active.at + active.arp1; h2Start = active.at + active.arp2;
@@ -341,19 +493,22 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
             }
         }
         if (graceEnd > 0 && outIdx >= graceEnd) { mainV.setTarget (active.mainSemis); mainV.glideK = 1.0f - std::exp (-1.0f / (0.015f * (float) sr)); graceEnd = 0; }
-        if (h1Start >= 0 && outIdx >= h1Start) { h1V.setTarget (active.h1Semis); h1V.logR = active.h1Semis / 12.0f; h1Target = active.h1Gain; h1Start = -1; }
-        if (h2Start >= 0 && outIdx >= h2Start) { h2V.setTarget (active.h2Semis); h2V.logR = active.h2Semis / 12.0f; h2Target = active.h2Gain; h2Start = -1; }
+        if (h1Start >= 0 && outIdx >= h1Start) { h1V.setTarget (active.h1Semis); h1V.logR = active.h1Semis / 12.0f; h1V.mix = 1.0f; h1Target = active.h1Gain; h1Start = -1; }
+        if (h2Start >= 0 && outIdx >= h2Start) { h2V.setTarget (active.h2Semis); h2V.logR = active.h2Semis / 12.0f; h2V.mix = 1.0f; h2Target = active.h2Gain; h2Start = -1; }
 
         // --- voix ---
         float ml, mr, al = 0, ar = 0, bl = 0, br = 0;
-        mainV.process (hist, (double) L, ml, mr);
+        mainV.process (hist, epochs, outIdx, t, ml, mr);
         h1Gain += kH * (h1Target - h1Gain);
         h2Gain += kH * (h2Target - h2Gain);
-        if (h1Gain > 1.0e-4f) h1V.process (hist, (double) L, al, ar);
-        if (h2Gain > 1.0e-4f) h2V.process (hist, (double) L, bl, br);
+        if (h1Gain > 1.0e-4f) h1V.process (hist, epochs, outIdx, t, al, ar);
+        if (h2Gain > 1.0e-4f) h2V.process (hist, epochs, outIdx, t, bl, br);
         accent += kA * (accentTarget - accent);
-        float vl = (ml + al * h1Gain * 0.8f + bl * h2Gain * 0.8f) * accent;
-        float vr = (mr + ar * h1Gain * 0.8f + br * h2Gain * 0.8f) * accent;
+        chordTarget = (chordOn && hasActive && ! active.voiced) ? juce::jmax (eff[Harmony1], eff[Harmony2]) * 0.6f : 0.0f;
+        chordGain += kH * (chordTarget - chordGain);
+        const float cl = chordOn ? chOut[0][(size_t) i] * chordGain : 0.0f, cr = chordOn ? chOut[1][(size_t) i] * chordGain : 0.0f;
+        float vl = (ml + al * h1Gain * 0.8f + bl * h2Gain * 0.8f + cl) * accent;
+        float vr = (mr + ar * h1Gain * 0.8f + br * h2Gain * 0.8f + cr) * accent;
 
         // --- stutter ---
         if (stutState == 1)
@@ -416,6 +571,7 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
         float yl = vl + rl * revMix + echoLp[0] * echoMix;
         float yr = vr + rr * revMix + echoLp[1] * echoMix;
         if (testMainOnly) { yl = ml; yr = mr; }
+        if (testChordOnly) { yl = chordOn ? chOut[0][(size_t) i] : 0.0f; yr = chordOn ? chOut[1][(size_t) i] : 0.0f; }
 
         // --- lumiere ---
         yl = highL.processSample (lowL.processSample (yl));
@@ -439,7 +595,7 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
     rp.dryLevel = 1.0f - eff[Space] * 0.25f;
     rp.width = 1.0f;
     reverb.setParameters (rp);
-    if (eff[Space] > 0.01f && ! testMainOnly)
+    if (eff[Space] > 0.01f && ! testMainOnly && ! testChordOnly)
     {
         juce::dsp::AudioBlock<float> blk (buf.getArrayOfWritePointers(), (size_t) nch, (size_t) n);
         juce::dsp::ProcessContextReplacing<float> ctx (blk);
@@ -458,7 +614,8 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
         const float target = levelOut > 1.0e-9f ? juce::jlimit (0.25f, 2.0f, std::sqrt (levelIn / levelOut)) : 1.0f;
         const float g0 = levelGain;
         levelGain += 0.01f * (target - levelGain);
-        if (! testMainOnly)
+        currentGain = levelGain;
+        if (! testMainOnly && ! testChordOnly)
             for (int ch = 0; ch < nch; ++ch) buf.applyGainRamp (ch, 0, n, g0, levelGain);
     }
     // --- limiteur de securite (-1 dB, relache 80 ms) ---

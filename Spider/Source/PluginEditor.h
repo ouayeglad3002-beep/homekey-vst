@@ -46,6 +46,7 @@ public:
     void resized() override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseMove (const juce::MouseEvent&) override;
+    void mouseDoubleClick (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override { hover = -1; }
 
     WebView web;

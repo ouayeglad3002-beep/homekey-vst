@@ -319,10 +319,12 @@ void WebView::paint (juce::Graphics& g)
         g.setColour (juce::Colours::white.withAlpha (0.55f));
         g.strokePath (arc, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
-    const bool sure = e.keyConf.load() > 0.12f;
+    const int learnt = e.learnCount.load();
+    const bool sure = learnt >= Engine::learnNotes;
     g.setColour (paper);
     g.setFont (sf (14.0f, true));
-    g.drawText (sure ? juce::String (Theory::noteName (key.tonic)) : juce::String ("..."), juce::Rectangle<float> (c.x - 40, c.y - 13, 80, 16), juce::Justification::centred);
+    g.drawText (sure ? juce::String (Theory::noteName (key.tonic)) : juce::String (learnt) + "/" + juce::String (Engine::learnNotes),
+                juce::Rectangle<float> (c.x - 40, c.y - 13, 80, 16), juce::Justification::centred);
     g.setFont (sf (9.5f));
     g.setColour (paper.withAlpha (0.75f));
     g.drawText (sure ? (key.minor ? "mineur" : "majeur") : "ecoute", juce::Rectangle<float> (c.x - 40, c.y + 2, 80, 12), juce::Justification::centred);
@@ -355,6 +357,14 @@ void SpiderEditor::mouseDown (const juce::MouseEvent& e)
 {
     for (int i = 0; i < Web::numPresets; ++i)
         if (presetRow (i).contains (e.position)) proc.selectPreset (i);
+}
+
+void SpiderEditor::mouseDoubleClick (const juce::MouseEvent& e)
+{
+    // double-clic sur le coeur de la toile : Spider reapprend la melodie
+    const auto wb = web.getBounds().toFloat();
+    const float R = juce::jmin (wb.getWidth(), wb.getHeight()) * 0.5f - 22.0f;
+    if (e.position.getDistanceFrom (wb.getCentre()) < R * 0.16f) proc.engine.requestRelearn();
 }
 
 void SpiderEditor::mouseMove (const juce::MouseEvent& e)

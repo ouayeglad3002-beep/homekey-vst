@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Spider VERSION 1.2.0)
+project(Spider VERSION 1.3.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,11 +38,17 @@ target_sources(Spider PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp)
 
+# Signalsmith Stretch + Linear (licence MIT) : transposition polyphonique des accords
+target_include_directories(Spider SYSTEM PRIVATE
+    ThirdParty/signalsmith-stretch
+    ThirdParty/linear/include)
+
 target_compile_definitions(Spider PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0)
+    JUCE_DISPLAY_SPLASH_SCREEN=0
+    _USE_MATH_DEFINES)
 
 target_link_libraries(Spider
     PRIVATE

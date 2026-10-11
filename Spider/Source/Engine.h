@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "MusicTheory.h"
 #include "Analyzer.h"
+#include "signalsmith-stretch.h"
 
 //==============================================================================
 // Les 15 fils de la toile
@@ -96,6 +97,121 @@ struct Shifter
 };
 
 //==============================================================================
+// Marques de periode (epoques) : un repere par cycle de l'onde, cale sur la crete du fondamental
+struct Epochs
+{
+    std::vector<float> lp; int64_t mask = 0, w = 0;   // signal mono filtre, indexe en absolu
+    float s1 = 0, s2 = 0, k = 0.1f;
+    std::array<int64_t, 256> e {}; int count = 0; int64_t last = -1;
+    float period = 400.0f;
+
+    void init (int sizePow2) { lp.assign ((size_t) sizePow2, 0.0f); mask = sizePow2 - 1; w = 0; s1 = s2 = 0; count = 0; last = -1; }
+    void setPeriod (float P, double sr)
+    {
+        period = juce::jlimit (16.0f, 2400.0f, P);
+        const float fc = juce::jmin (0.4f * (float) sr, 1.4f * (float) sr / period);
+        k = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * fc / (float) sr);
+    }
+    inline void push (float x) { s1 += k * (x - s1); s2 += k * (s1 - s2); lp[(size_t) (w & mask)] = s2; ++w; }
+    inline float at (int64_t i) const { return lp[(size_t) (i & mask)]; }
+    // pose les epoques jusqu'a 'upTo' (index absolu deja recu)
+    void advance (int64_t upTo)
+    {
+        if (last < 0) last = upTo - (int64_t) (2 * period);
+        while ((float) last + 1.25f * period <= (float) upTo)
+        {
+            const int64_t lo = last + (int64_t) (0.75f * period), hi = last + (int64_t) (1.25f * period);
+            int64_t best = lo; float bv = -1.0e9f;
+            for (int64_t i = lo; i <= hi; ++i) { const float v = at (i); if (v > bv) { bv = v; best = i; } }
+            last = juce::jmax (last + 1, best);
+            e[(size_t) (count++ & 255)] = last;
+        }
+    }
+    int64_t nearest (double m) const
+    {
+        int64_t best = (int64_t) m; double bd = 1.0e18;
+        for (int j = 0; j < juce::jmin (count, 256); ++j)
+        {
+            const int64_t v = e[(size_t) ((count - 1 - j) & 255)];
+            const double d = std::abs ((double) v - m);
+            if (d < bd) { bd = d; best = v; }
+            if ((double) v < m - 4.0 * period) break;
+        }
+        return best;
+    }
+};
+
+//==============================================================================
+// Voix TD-PSOLA : des grains de 2 periodes, pris sur les epoques, reposes a la nouvelle periode.
+// Les grains ne sont pas reechantillonnes : le timbre (formants) reste celui de l'original.
+struct Psola
+{
+    float logR = 0.0f, targetLog = 0.0f, glideK = 0.05f, mix = 0.0f, P0 = 400.0f, Hmax = 1100.0f;
+    double nextMark = -1.0;
+    std::vector<float> accL, accR, wsum; int64_t mask = 0;
+    std::vector<float> win;   // fenetre de Hann tabulee
+
+    void init (double sr)
+    {
+        accL.assign (8192, 0.0f); accR.assign (8192, 0.0f); wsum.assign (8192, 0.0f); mask = 8191;
+        Hmax = (float) (0.025 * sr);
+        win.resize (1025);
+        for (int i = 0; i <= 1024; ++i) win[(size_t) i] = 0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / 1024.0f);
+        reset();
+    }
+    void reset() { logR = targetLog = 0.0f; mix = 0.0f; nextMark = -1.0; std::fill (accL.begin(), accL.end(), 0.0f); std::fill (accR.begin(), accR.end(), 0.0f); std::fill (wsum.begin(), wsum.end(), 0.0f); }
+    void setTarget (float semis) { targetLog = semis / 12.0f; }
+    void setPeriod (float P) { P0 = juce::jlimit (16.0f, 2400.0f, P); }
+
+    // o = index absolu de sortie ; t = dernier index d'entree ecrit dans 'ring'
+    inline void process (const Ring& ring, const Epochs& ep, int64_t o, int64_t t, float& outL, float& outR)
+    {
+        logR += glideK * (targetLog - logR);
+        const bool need = std::abs (targetLog) > 1.0e-4f || std::abs (logR) > 2.0e-4f;
+        mix += 0.004f * ((need ? 1.0f : 0.0f) - mix);
+        auto rd = [&] (int64_t idx, float& a, float& b)
+        {
+            const int64_t d = t - idx;
+            const size_t k = (size_t) ((ring.w - 1 - d) & ring.mask);
+            a = ring.l[k]; b = ring.r[k];
+        };
+        float dl, dr; rd (o, dl, dr);
+        if (mix < 0.001f) { outL = dl; outR = dr; nextMark = -1.0; return; }
+
+        const float r = std::exp2 (logR);
+        const float P1 = P0 / r;
+        const float H = juce::jlimit (32.0f, Hmax, P0);   // grain = 2 periodes d'origine (vrai PSOLA)
+        if (nextMark < 0.0 || nextMark < (double) o - 4.0 * H)
+        {
+            std::fill (accL.begin(), accL.end(), 0.0f); std::fill (accR.begin(), accR.end(), 0.0f); std::fill (wsum.begin(), wsum.end(), 0.0f);
+            nextMark = (double) o + H;
+        }
+        while (nextMark - H <= (double) o)
+        {
+            const int64_t m = (int64_t) std::llround (nextMark);
+            const int64_t a = ep.nearest (nextMark);
+            const int h = (int) H;
+            const float step = 1024.0f / (float) (2 * h);
+            for (int j = -h; j <= h; ++j)
+            {
+                const float wv = win[(size_t) juce::jlimit (0, 1024, (int) ((float) (j + h) * step))];
+                float xa, xb; rd (a + j, xa, xb);
+                const size_t q = (size_t) ((m + j) & mask);
+                accL[q] += xa * wv; accR[q] += xb * wv; wsum[q] += wv;
+            }
+            nextMark += juce::jmax (8.0f, P1);
+        }
+        // pas de normalisation point par point (elle deformerait les grains) : gain moyen = P1 / H
+        const size_t q = (size_t) (o & mask);
+        const float g = juce::jlimit (0.25f, 2.0f, P1 / H);
+        const float yl = accL[q] * g, yr = accR[q] * g;
+        accL[q] = accR[q] = wsum[q] = 0.0f;
+        outL = dl * (1.0f - mix) + yl * mix;
+        outR = dr * (1.0f - mix) + yr * mix;
+    }
+};
+
+//==============================================================================
 class Engine
 {
 public:
@@ -108,8 +224,22 @@ public:
     };
 
     void prepare (double sampleRate, int maxBlock);
+    int maxBlock() const { return maxBlk; }
+
+    // --- la toile apprise : sauvegardee dans le projet ---
+    struct Learned { bool valid = false; int tonic = 0; bool minor = true; float reg = 64.0f, dens = 3.0f, gain = 1.0f; };
+    static uint64_t pack (const Learned& l);
+    static Learned unpack (uint64_t v);
+    Learned learned() const { return unpack (learnedPacked.load()); }      // fil de l'interface
+    void restoreLearned (const Learned& l) { restorePacked = pack (l); restorePending = true; }
+    void requestRelearn() { relearnPending = true; }
+    void onTransportJump();                    // saut / boucle de la tete de lecture
+    std::atomic<int> learnCount { 0 };
+    static constexpr int learnNotes = 16;
     int latency() const { return L; }
     void setPreset (int index);       // lance le morphing (3 s)
+    void setPresetImmediate (int index);   // sans morphing (rechargement du projet)
+    std::atomic<float> currentGain { 1.0f };
     int  presetIndex() const { return presetIdx; }
 
     // buffer stereo en place ; firstSample = index absolu d'entree du 1er echantillon
@@ -146,7 +276,7 @@ private:
         bool voiced = true;
         float mainSemis = 0, graceSemis = 0; int graceLen = 0;
         float h1Semis = 0, h2Semis = 0, h1Gain = 0, h2Gain = 0; int arp1 = 0, arp2 = 0;
-        float window = 1024;
+        float window = 1024, period = 400;
         int stutRepeats = 0, stutLen = 0; bool stutReverse = false;
         float accent = 1.0f, echoSemis = 0.0f, glideMs = 10.0f;
         float echoK[3] = { 0, 0, 0 };   // repetitions de l'echo : +1, +2, +3 degres (dans la gamme)
@@ -157,6 +287,7 @@ private:
     std::array<Shifter, 3> echoTap; std::array<int, 3> echoNote { -1, -1, -1 };
 public:
     bool testMainOnly = false;   // tests : voix principale seule
+    bool testChordOnly = false;  // tests : voix d'accords seule
 private:
     int64_t graceEnd = 0, h1Start = 0, h2Start = 0;
 
@@ -165,7 +296,17 @@ private:
     float lastSpb = 22050;
 
     // voix
-    Shifter mainV, h1V, h2V, echoV;
+    Psola mainV, h1V, h2V;
+    Shifter echoV;
+    Epochs epochs;
+    std::array<std::pair<int64_t, float>, 32> periods {}; int periodHead = 0;   // (debut de note, periode) pour les epoques
+    float periodAt (int64_t pos) const;
+    int64_t Dt = 2822;          // retard du suivi d'epoques (les notes sont decidees avant)
+    // accords : transposition diatonique polyphonique (Signalsmith Stretch)
+    signalsmith::stretch::SignalsmithStretch<float> chord { 7 };
+    std::vector<float> chIn[2], chOut[2];
+    float chordHp[2][2] {}; float chordGain = 0.0f, chordTarget = 0.0f; int chordDeg = 2; int chordDelay = 0; bool chordOn = false;
+    float chordMap (float f) const;
     float h1Gain = 0, h1Target = 0, h2Gain = 0, h2Target = 0, accent = 1, accentTarget = 1;
 
     // stutter
@@ -189,8 +330,15 @@ private:
     int axisDeg = 0; float lockRegister = 64.0f, lockDensity = 3.0f;
     uint32_t seed = 1;
     std::array<float, Web::NumParams> moodDelta {};
-    int64_t otherKeySamples = 0;
-    void lockTo (Theory::Key k);
+    std::array<float, learnNotes> learnMidi {};
+    std::array<int64_t, learnNotes> learnAt {};
+    float lockGain = 1.0f;
+    int learnN = 0, learnE = 0; int64_t learnFirst = 0, learnLast = 0;   // learnN = notes seules, learnE = tous les evenements
+    std::atomic<uint64_t> learnedPacked { 0 }, restorePacked { 0 };
+    std::atomic<bool> restorePending { false }, relearnPending { false };
+    int maxBlk = 4096;
+    void applyLearned();          // axe, graine, humeur a partir de lockKey / lockRegister / lockDensity
+    void publishLearned();
 
     void startMorphTo (int index);
     void updateMood (int n);
