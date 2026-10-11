@@ -102,7 +102,7 @@ public:
     struct Viz   // pour l'animation
     {
         float origMidi = 0, newMidi = 0, h1Midi = -1, h2Midi = -1;
-        float step = 0;          // position dans le cycle de 2 mesures (0..32 doubles-croches)
+        float step = 0;          // position dans le cycle de 4 mesures (0..64 doubles-croches)
         bool grace = false, stutter = false, voiced = true;
         int64_t at = 0;          // debut de la note (index d'entree)
     };
@@ -183,8 +183,17 @@ private:
     float lastLight = -10.0f;
     juce::dsp::Reverb reverb;
 
+    // toile verrouillee : la transformation est choisie une fois pour toutes
+    bool locked = false;
+    Theory::Key lockKey;
+    int axisDeg = 0; float lockRegister = 64.0f, lockDensity = 3.0f;
+    uint32_t seed = 1;
+    std::array<float, Web::NumParams> moodDelta {};
+    int64_t otherKeySamples = 0;
+    void lockTo (Theory::Key k);
+
     void startMorphTo (int index);
-    void updateMood();
+    void updateMood (int n);
     Cmd decide (const Analyzer::NoteEvent& e, double ppqAtNote, double spb);
     void pushViz (const Viz& v);
 };

@@ -40,7 +40,7 @@ void WebView::tick (float dt)
     for (int i = 0; i < n2; ++i) notes.push_back ({ proc.engine.vizBuf[(size_t) (s2 + i)], 0.0f });
     f.finishedRead (n1 + n2);
     for (auto& n : notes) n.age += dt;
-    while (! notes.empty() && notes.front().age > 9.0f) notes.pop_front();
+    while (! notes.empty() && notes.front().age > 13.0f) notes.pop_front();
     while (notes.size() > 96) notes.pop_front();
 }
 
@@ -92,10 +92,10 @@ void WebView::paint (juce::Graphics& g)
         g.strokePath (th, juce::PathStrokeType (0.6f + 1.2f * v));
     }
 
-    // --- rayons : 2 mesures en doubles-croches ---
-    for (int s = 0; s < 32; ++s)
+    // --- rayons : 4 mesures en doubles-croches ---
+    for (int s = 0; s < 64; ++s)
     {
-        const float a = juce::MathConstants<float>::twoPi * (float) s / 32.0f;
+        const float a = juce::MathConstants<float>::twoPi * (float) s / 64.0f;
         const bool bar = s % 16 == 0, beat = s % 4 == 0;
         g.setColour (bar ? ink.withAlpha (0.55f) : beat ? silk.darker (0.15f) : faint);
         g.drawLine ({ c.getPointOnCircumference (R * 0.12f, a), c.getPointOnCircumference (R, a) }, bar ? 1.2f : 0.8f);
@@ -121,11 +121,11 @@ void WebView::paint (juce::Graphics& g)
     }
 
     // --- notes : d'origine (gris) et recomposees (noir) ---
-    auto posFor = [&] (float step, float midi) { return c.getPointOnCircumference (radiusFor (midi, centreMidi), juce::MathConstants<float>::twoPi * step / 32.0f); };
+    auto posFor = [&] (float step, float midi) { return c.getPointOnCircumference (radiusFor (midi, centreMidi), juce::MathConstants<float>::twoPi * step / 64.0f); };
     const Note* prev = nullptr;
     for (auto& n : notes)
     {
-        const float fadeA = juce::jlimit (0.0f, 1.0f, 1.0f - n.age / 9.0f);
+        const float fadeA = juce::jlimit (0.0f, 1.0f, 1.0f - n.age / 13.0f);
         const auto po = posFor (n.v.step, n.v.origMidi);
         const auto pn = posFor (n.v.step, n.v.newMidi);
         if (! n.v.voiced)

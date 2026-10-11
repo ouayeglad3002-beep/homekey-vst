@@ -17,8 +17,14 @@ CONSEILS
   (octaves, rythme, echos, espace) pour rester juste.
 - Les notes fortes (premier temps de chaque mesure) restent en place :
   le deroule de ta melodie est garde.
-- Les transformations se repetent a chaque boucle de 2 mesures
-  (sauf INFINITE THREAD, qui se retisse a chaque passage).
+- v1.1 : son STABLE. Des que la tonalite est reconnue (quelques notes),
+  Spider verrouille sa toile : humeur, carte des notes et motif d'effets
+  sont choisis une fois pour toutes. La meme note au meme endroit donne
+  toujours exactement le meme resultat, du debut a la fin du morceau.
+- Ornements, stutters, octaves et accents suivent un motif fixe de
+  4 mesures, repete a l'identique. Harmonies, echo, reverse, espace et
+  lumiere sont constants.
+- Changer de preset retisse la toile (fondu de 3 s), puis tout redevient fixe.
 - Spider ajoute ~46 ms de latence, compensee automatiquement par FL Studio.
 - Le volume de sortie est aligne sur celui d'entree.
 
@@ -32,7 +38,7 @@ LES 10 PRESETS
 07 MIRROR WEB      contour inverse, reverse et echos descendants
 08 CATHEDRAL       organum : quintes et octaves, glisses lents, immense
 09 VENOM           agressif : secondes et quartes, grain, stutter
-10 INFINITE THREAD la toile se retisse a chaque boucle, sans fin
+10 INFINITE THREAD tous les fils tisses ensemble : une toile dense et fixe
 
 L'HUMEUR
 En majeur Spider eclaircit, ornemente vers le haut et fait monter ses
