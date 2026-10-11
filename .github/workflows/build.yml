@@ -1,4 +1,4 @@
-name: Build HomeKey I + One Compress (Windows VST3)
+name: Build HomeKey I + One Compress + Spider (Windows VST3)
 
 on:
   push:
@@ -44,6 +44,19 @@ jobs:
           Copy-Item "build-oc/OneCompress_artefacts/Release/Standalone/One Compress.exe" "package-oc/One Compress.exe"
           Copy-Item "OneCompress/LISEZ-MOI.txt" "package-oc/LISEZ-MOI.txt"
 
+      - name: Compiler Spider
+        run: |
+          cmake -S Spider -B build-sp -A x64
+          cmake --build build-sp --config Release --target Spider_VST3 Spider_Standalone --parallel
+
+      - name: Preparer le paquet Spider
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package-sp | Out-Null
+          Copy-Item -Recurse "build-sp/Spider_artefacts/Release/VST3/Spider.vst3" "package-sp/Spider.vst3"
+          Copy-Item "build-sp/Spider_artefacts/Release/Standalone/Spider.exe" "package-sp/Spider.exe"
+          Copy-Item "Spider/LISEZ-MOI.txt" "package-sp/LISEZ-MOI.txt"
+
       - name: Telecharger le resultat
         uses: actions/upload-artifact@v5
         with:
@@ -55,10 +68,11 @@ jobs:
         run: |
           Compress-Archive -Path package/* -DestinationPath HomeKeyI-Windows.zip -Force
           Compress-Archive -Path package-oc/* -DestinationPath OneCompress-Windows.zip -Force
+          Compress-Archive -Path package-sp/* -DestinationPath Spider-Windows.zip -Force
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git checkout --orphan builds
           git rm -rf --cached . | Out-Null
-          git add -f HomeKeyI-Windows.zip OneCompress-Windows.zip
+          git add -f HomeKeyI-Windows.zip OneCompress-Windows.zip Spider-Windows.zip
           git commit -m "Build ${{ github.sha }}"
           git push -f origin builds

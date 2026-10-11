@@ -1,0 +1,41 @@
+SPIDER v1.0 - by HomeKey Audio
+==============================
+Spider ecoute ta melodie, reconnait sa gamme, et la recompose dans
+cette gamme en gardant son deroule principal. Aucun bouton : tu choisis
+un preset, et la toile se retisse sous tes yeux (morphing de 3 secondes).
+
+INSTALLER DANS FL STUDIO
+1. Copie "Spider.vst3" dans C:\Program Files\Common Files\VST3\
+2. FL Studio > Options > Manage plugins > Find installed plugins
+3. Dans le MIXER, sur la piste de ta melodie : slot d'effet > Spider
+4. Lance la lecture : Spider ecoute quelques notes ("ecoute..."), detecte la
+   gamme, puis commence a recomposer.
+
+CONSEILS
+- Ideal sur une melodie a une note a la fois : lead, voix, pluck, piano
+  joue note par note. Sur des accords, Spider passe en mode sur
+  (octaves, rythme, echos, espace) pour rester juste.
+- Les notes fortes (premier temps de chaque mesure) restent en place :
+  le deroule de ta melodie est garde.
+- Les transformations se repetent a chaque boucle de 2 mesures
+  (sauf INFINITE THREAD, qui se retisse a chaque passage).
+- Spider ajoute ~46 ms de latence, compensee automatiquement par FL Studio.
+- Le volume de sortie est aligne sur celui d'entree.
+
+LES 10 PRESETS
+01 SILK            ameliore en douceur : ornements fins, une tierce discrete
+02 ORB WEAVER      tisse des harmonies : tierces et sixtes arpegees
+03 BLACK WIDOW     la melodie en miroir, sombre, avec reverse
+04 TARANTULA       decoupe rythmique : stutters, sauts d'octave, accents
+05 DREAM CATCHER   aerien : octave haute, glisses, echos qui montent
+06 JUMPING SPIDER  intervalles elargis, bonds et ornements joueurs
+07 MIRROR WEB      contour inverse, reverse et echos descendants
+08 CATHEDRAL       organum : quintes et octaves, glisses lents, immense
+09 VENOM           agressif : secondes et quartes, grain, stutter
+10 INFINITE THREAD la toile se retisse a chaque boucle, sans fin
+
+L'HUMEUR
+En majeur Spider eclaircit, ornemente vers le haut et fait monter ses
+echos ; en mineur il assombrit, ajoute de l'espace et fait descendre ses
+echos. Une melodie dense recoit moins d'effets rythmiques, une melodie
+aeree recoit plus d'echos et de glisses.
