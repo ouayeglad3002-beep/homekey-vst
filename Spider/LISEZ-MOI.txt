@@ -17,6 +17,9 @@ CONSEILS
   (octaves, rythme, echos, espace) pour rester juste.
 - Les notes fortes (premier temps de chaque mesure) restent en place :
   le deroule de ta melodie est garde.
+- v1.2 : nouvel ecran plus compact (660 x 460). Logo trace a l'encre, toile
+  en fils noirs vernis qui bougent comme une matiere vivante. Les 15 fils
+  travaillent en interne : tu ne vois que la toile et les presets.
 - v1.1 : son STABLE. Des que la tonalite est reconnue (quelques notes),
   Spider verrouille sa toile : humeur, carte des notes et motif d'effets
   sont choisis une fois pour toutes. La meme note au meme endroit donne
