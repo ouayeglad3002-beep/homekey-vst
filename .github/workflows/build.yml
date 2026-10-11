@@ -1,4 +1,4 @@
-name: Build HomeKeys (Windows VST3)
+name: Build HomeKey I + One Compress (Windows VST3)
 
 on:
   push:
@@ -31,6 +31,19 @@ jobs:
           Copy-Item "CREDITS.txt" "package/CREDITS.txt"
           Copy-Item -Recurse "HomeKey Preset" "package/HomeKey Preset"
 
+      - name: Compiler One Compress
+        run: |
+          cmake -S OneCompress -B build-oc -A x64
+          cmake --build build-oc --config Release --target OneCompress_VST3 OneCompress_Standalone --parallel
+
+      - name: Preparer le paquet One Compress
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package-oc | Out-Null
+          Copy-Item -Recurse "build-oc/OneCompress_artefacts/Release/VST3/One Compress.vst3" "package-oc/One Compress.vst3"
+          Copy-Item "build-oc/OneCompress_artefacts/Release/Standalone/One Compress.exe" "package-oc/One Compress.exe"
+          Copy-Item "OneCompress/LISEZ-MOI.txt" "package-oc/LISEZ-MOI.txt"
+
       - name: Telecharger le resultat
         uses: actions/upload-artifact@v5
         with:
@@ -41,10 +54,11 @@ jobs:
         shell: pwsh
         run: |
           Compress-Archive -Path package/* -DestinationPath HomeKeyI-Windows.zip -Force
+          Compress-Archive -Path package-oc/* -DestinationPath OneCompress-Windows.zip -Force
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git checkout --orphan builds
           git rm -rf --cached . | Out-Null
-          git add -f HomeKeyI-Windows.zip
+          git add -f HomeKeyI-Windows.zip OneCompress-Windows.zip
           git commit -m "Build ${{ github.sha }}"
           git push -f origin builds

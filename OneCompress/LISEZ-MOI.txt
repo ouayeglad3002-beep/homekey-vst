@@ -1,0 +1,24 @@
+ONE COMPRESS v1.0 - by HomeKey Audio
+====================================
+Un compresseur puissant et simple : 3 boutons, 5 caracteres.
+
+INSTALLER DANS FL STUDIO
+1. Copie "One Compress.vst3" dans C:\Program Files\Common Files\VST3\
+2. FL Studio > Options > Manage plugins > Find installed plugins
+3. Dans le Mixer, sur une piste : slot d'effet > One Compress
+
+LES 5 CARACTERES (clique dessus : ils chargent leur reglage conseille)
+GLUE    colle et arrondit : bus de beat, instruments, mix entier
+PUNCH   transistor rapide qui claque : drums, 808, rap
+VELVET  lampe douce et chaude, relachement "opto" : voix, piano, pads
+SMASH   ecrasement sale et enorme, en parallele : drums, effets lourds
+BLOOM   remonte les details et l'air, elargit : nappes, pianos de reve
+
+LES 3 BOUTONS
+SQUEEZE  quantite de compression. Le volume est compense tout seul :
+         tu entends le caractere, pas juste "plus fort".
+COLOR    saturation propre au style (sur-echantillonnee x2).
+MIX      melange avec le son d'origine (compression parallele).
+
+Le vumetre a aiguille montre la compression en dB
+(pour BLOOM : la remontee des sons faibles, en +dB).
