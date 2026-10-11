@@ -50,13 +50,21 @@ jobs:
           cmake --build build-sp --config Release --target Spider_VST3 Spider_Standalone --parallel
 
       - name: Valider Spider avec pluginval (niveau 7)
+        id: pv
+        continue-on-error: true
         shell: pwsh
         run: |
-          Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
-          Expand-Archive pluginval.zip -DestinationPath pluginval -Force
-          $exe = Get-ChildItem -Recurse pluginval -Filter pluginval.exe | Select-Object -First 1
-          & $exe.FullName --strictness-level 7 --validate-in-process --timeout-ms 900000 --output-dir pluginval-logs "build-sp/Spider_artefacts/Release/VST3/Spider.vst3"
-          if ($LASTEXITCODE -ne 0) { Write-Error "pluginval a trouve un probleme dans Spider"; exit 1 }
+          "pluginval - Spider" | Out-File pluginval-Spider.txt
+          try {
+            Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pluginval.zip
+            Expand-Archive pluginval.zip -DestinationPath pluginval -Force
+            $exe = Get-ChildItem -Recurse pluginval -Filter pluginval.exe | Select-Object -First 1
+            "exe: $($exe.FullName)" | Out-File -Append pluginval-Spider.txt
+            & $exe.FullName --strictness-level 7 --validate-in-process --timeout-ms 900000 "build-sp/Spider_artefacts/Release/VST3/Spider.vst3" *>&1 | Out-File -Append pluginval-Spider.txt
+            $code = $LASTEXITCODE
+          } catch { $_ | Out-File -Append pluginval-Spider.txt; $code = 2 }
+          "code: $code" | Out-File -Append pluginval-Spider.txt
+          if ($code -ne 0) { exit 1 }
 
       - name: Preparer le paquet Spider
         shell: pwsh
@@ -82,6 +90,10 @@ jobs:
           git config user.email "github-actions@users.noreply.github.com"
           git checkout --orphan builds
           git rm -rf --cached . | Out-Null
-          git add -f HomeKeyI-Windows.zip OneCompress-Windows.zip Spider-Windows.zip
+          git add -f HomeKeyI-Windows.zip OneCompress-Windows.zip Spider-Windows.zip pluginval-Spider.txt
           git commit -m "Build ${{ github.sha }}"
           git push -f origin builds
+
+      - name: Bloquer si pluginval a echoue
+        if: steps.pv.outcome == 'failure'
+        run: exit 1
