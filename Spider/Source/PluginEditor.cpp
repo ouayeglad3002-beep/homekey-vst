@@ -337,13 +337,13 @@ SpiderEditor::SpiderEditor (SpiderProcessor& p) : AudioProcessorEditor (&p), web
 {
     addAndMakeVisible (web);
     web.setInterceptsMouseClicks (false, false);
-    setSize (660, 460);
+    setSize (660, 520);
     startTimerHz (40);
 }
 
 juce::Rectangle<float> SpiderEditor::presetRow (int i) const
 {
-    return { 16.0f, 104.0f + (float) i * 29.0f, 168.0f, 25.0f };
+    return { 16.0f, 102.0f + (float) i * 24.0f, 168.0f, 21.0f };
 }
 
 void SpiderEditor::timerCallback()
@@ -415,6 +415,12 @@ void SpiderEditor::drawLogo (juce::Graphics& g, juce::Rectangle<float> area)
         auto c = P(); c.startNewSubPath (0.36f, 0.52f); c.cubicTo (0.62f, 0.62f, 0.7f, 0.95f, 1.02f, 1.16f);
         letters.push_back ({ 0.92f, { a, b, c } });
     }
+    letters.push_back ({ 0.12f, {} });   // espace
+    for (int k = 0; k < 2; ++k)
+    {   // II : deux crocs
+        auto a = P(); a.startNewSubPath (0.2f, -0.02f); a.cubicTo (0.25f, 0.35f, 0.15f, 0.75f, 0.2f, 1.1f);
+        letters.push_back ({ 0.34f, { a } });
+    }
 
     float x = area.getX();
     const float y = area.getY();
@@ -481,7 +487,7 @@ void SpiderEditor::paint (juce::Graphics& g)
     g.drawLine (196.0f, 0.0f, 196.0f, (float) getHeight(), 1.0f);
 
     // logo
-    drawLogo (g, { 16.0f, 20.0f, 170.0f, 32.0f });
+    drawLogo (g, { 16.0f, 24.0f, 172.0f, 27.0f });
 
     g.setFont (sf (9.5f));
     g.setColour (ink2);
@@ -514,12 +520,18 @@ void SpiderEditor::paint (juce::Graphics& g)
         g.setFont (sf (11.0f, true));
         g.drawText (juce::String (i + 1).paddedLeft ('0', 2), r.withTrimmedLeft (10.0f).withWidth (22.0f), juce::Justification::centredLeft);
         g.drawText (Web::preset (i).name, r.withTrimmedLeft (34.0f), juce::Justification::centredLeft);
+        if (i >= 10)
+        {
+            g.setColour (on ? paper.withAlpha (0.6f) : ink2);
+            g.setFont (sf (8.5f, true));
+            g.drawText ("II", r.withTrimmedRight (8.0f), juce::Justification::centredRight);
+        }
     }
 
     // description du preset choisi
     g.setColour (ink2);
     g.setFont (sf (9.5f));
-    g.drawFittedText (Web::preset (cur).desc, 20, getHeight() - 60, 160, 40, juce::Justification::topLeft, 3);
+    g.drawFittedText (Web::preset (cur).desc, 18, getHeight() - 50, 166, 44, juce::Justification::topLeft, 3, 1.0f);
 }
 
 void SpiderEditor::resized()

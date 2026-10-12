@@ -3,6 +3,7 @@
 #include "MusicTheory.h"
 #include "Analyzer.h"
 #include "signalsmith-stretch.h"
+#include "Fx.h"
 
 //==============================================================================
 // Les 15 fils de la toile
@@ -19,17 +20,25 @@ namespace Web
         return n[i];
     }
 
+    // Spider II : la signature sonore de chaque preset (cachee, comme les fils)
+    enum S { Formant, Spread, Detune, DriveMode, Drive, Crush, Wow, Chorus,
+             DelayMode, DelayBeats, DelayFb, DelayMix,
+             RevSize, RevDecay, RevDamp, RevPre, Shimmer, RevMix,
+             Shaper, ShaperDepth, LowCut, HighCut, Sweep, Width, NumS };
+    inline bool isDiscrete (int i) { return i == DriveMode || i == DelayMode || i == Shaper || i == DelayBeats; }
+
     struct Preset
     {
         const char* name;
         const char* desc;
         float p[NumParams];   // Expand : 0..1 -> x0.5 .. x2 ; Light : 0..1 -> sombre..lumineux (0.5 = neutre)
-        float grit;           // saturation cachee
+        float grit;           // (v1) inutilise depuis Spider II : remplace par Drive
         int h1Type, h2Type;   // types d'harmonie
         bool evolve;          // la toile change a chaque cycle (infini)
+        float s[NumS];        // signature sonore
     };
 
-    constexpr int numPresets = 10;
+    constexpr int numPresets = 15;
     const Preset& preset (int i);
 }
 
@@ -147,6 +156,7 @@ struct Epochs
 struct Psola
 {
     float logR = 0.0f, targetLog = 0.0f, glideK = 0.05f, mix = 0.0f, P0 = 400.0f, Hmax = 1100.0f;
+    float fk = 1.0f;          // formant : lecture des grains plus vite (>1 = voix plus claire) ou plus lentement
     double nextMark = -1.0;
     std::vector<float> accL, accR, wsum; int64_t mask = 0;
     std::vector<float> win;   // fenetre de Hann tabulee
@@ -167,7 +177,7 @@ struct Psola
     inline void process (const Ring& ring, const Epochs& ep, int64_t o, int64_t t, float& outL, float& outR)
     {
         logR += glideK * (targetLog - logR);
-        const bool need = std::abs (targetLog) > 1.0e-4f || std::abs (logR) > 2.0e-4f;
+        const bool need = std::abs (targetLog) > 1.0e-4f || std::abs (logR) > 2.0e-4f || std::abs (fk - 1.0f) > 1.0e-3f;
         mix += 0.004f * ((need ? 1.0f : 0.0f) - mix);
         auto rd = [&] (int64_t idx, float& a, float& b)
         {
@@ -192,10 +202,20 @@ struct Psola
             const int64_t a = ep.nearest (nextMark);
             const int h = (int) H;
             const float step = 1024.0f / (float) (2 * h);
+            const bool fshift = std::abs (fk - 1.0f) > 1.0e-3f;
             for (int j = -h; j <= h; ++j)
             {
                 const float wv = win[(size_t) juce::jlimit (0, 1024, (int) ((float) (j + h) * step))];
-                float xa, xb; rd (a + j, xa, xb);
+                float xa, xb;
+                if (! fshift) rd (a + j, xa, xb);
+                else
+                {
+                    // grain relu a une autre vitesse : l'enveloppe spectrale (les formants) se deplace, la hauteur non
+                    const float pos = (float) j * fk;
+                    const int64_t i0 = a + (int64_t) std::floor (pos); const float f = pos - std::floor (pos);
+                    float a0, b0, a1, b1; rd (i0, a0, b0); rd (i0 + 1, a1, b1);
+                    xa = a0 + f * (a1 - a0); xb = b0 + f * (b1 - b0);
+                }
                 const size_t q = (size_t) ((m + j) & mask);
                 accL[q] += xa * wv; accR[q] += xb * wv; wsum[q] += wv;
             }
@@ -236,7 +256,7 @@ public:
     void onTransportJump();                    // saut / boucle de la tete de lecture
     std::atomic<int> learnCount { 0 };
     static constexpr int learnNotes = 16;
-    int latency() const { return L; }
+    int latency() const { return L + Fx::Limiter::look; }
     void setPreset (int index);       // lance le morphing (3 s)
     void setPresetImmediate (int index);   // sans morphing (rechargement du projet)
     std::atomic<float> currentGain { 1.0f };
@@ -263,7 +283,9 @@ private:
     std::vector<Analyzer::NoteEvent> events;
 
     // morphing des fils
-    std::array<float, Web::NumParams + 1> cur {}, from {}, to {};
+    static constexpr int NumMorph = Web::NumParams + 1 + Web::NumS;
+    std::array<float, NumMorph> cur {}, from {}, to {};
+    inline float snd (int i) const { return cur[(size_t) (Web::NumParams + 1 + i)]; }
     float morphT = 1.0f;
     int h1Type = 0, h2Type = 0; bool evolve = false;
     int nextH1 = 0, nextH2 = 0; bool nextEvolve = false;
@@ -312,7 +334,7 @@ private:
     // stutter
     juce::AudioBuffer<float> stutBuf;
     int stutState = 0, stutPos = 0, stutLen = 0, stutRepeatsLeft = 0, stutRepeatIdx = 0; bool stutRev = false;
-    float stutFade = 0.0f;
+    float stutFade = 0.0f; int stutRecover = 0;
 
     // reverse delay
     int64_t revCount = 0;
@@ -322,7 +344,15 @@ private:
     // ton, espace
     juce::dsp::IIR::Filter<float> lowL, lowR, highL, highR;
     float lastLight = -10.0f;
-    juce::dsp::Reverb reverb;
+    // --- Spider II : chaine d'effets ---
+    Fx::Fdn fdn; float fdnLast[5] = { -1, -1, -1, -1, -1 };
+    Fx::Line dly, chor, wowLine;
+    Fx::Svf dlyLp[2], dlyHp[2], toneHp[2], toneLp[2], sweepF[2];
+    Fx::AdaaTanh sat[2], dlySat[2];
+    Fx::Limiter limiter;
+    float dlyTime = 0.0f, crushHold[2] = { 0, 0 }, crushCount = 0, dlyFbState[2] = { 0, 0 };
+    float lastLow = -1, lastHigh = -1; int sweepCounter = 0;
+    float revWet[2] = { 0, 0 }; float shapeG = 1.0f;
 
     // toile verrouillee : la transformation est choisie une fois pour toutes
     bool locked = false;

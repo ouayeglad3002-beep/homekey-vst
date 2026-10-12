@@ -3,29 +3,62 @@
 using namespace Web;
 
 //==============================================================================
-//  VARIATION OUVERT MIROIR OCTAV HARM1 HARM2 ARPEG ORNEM GLISS STUTT REVER ECHO  LUMIE ESPACE ACCENT
+// Les 15 presets de Spider II.
+// p = les 15 fils (la melodie) :
+//   VARIATION OUVERT MIROIR OCTAV HARM1 HARM2 ARPEG ORNEM GLISS STUTT REVER ECHO LUMIE ESPACE ACCENT
+// s = la signature sonore :
+//   FORMANT(dt) SPREAD DETUNE(ct) | DRIVE(mode 0 rien,1 bande,2 lampe,3 fuzz) DRIVE CRUSH WOW CHORUS
+//   | DELAY(mode 0 rien,1 spirale,2 ping-pong,3 bande) TEMPS(en temps) FEEDBACK MIX
+//   | REVERB TAILLE DUREE(s) AMORTI PREDELAY(ms) SHIMMER MIX | SHAPER(motif) PROFONDEUR
+//   | COUPE-BAS(Hz) COUPE-HAUT(Hz) BALAYAGE | LARGEUR
 static const Preset presets[numPresets] =
 {
-    { "SILK", "ameliore en douceur : ornements fins, une tierce discrete",
-      { .25f, .50f, .00f, .05f, .22f, .00f, .00f, .25f, .25f, .00f, .00f, .12f, .58f, .25f, .30f }, 0.00f, 0, 0, false },
-    { "ORB WEAVER", "tisse des harmonies : tierces et sixtes arpegees",
-      { .30f, .50f, .00f, .00f, .60f, .40f, .50f, .15f, .20f, .00f, .00f, .20f, .60f, .40f, .25f }, 0.00f, 1, 4, false },
-    { "BLACK WIDOW", "la melodie en miroir, sombre, avec reverse",
-      { .30f, .60f, .85f, .30f, .30f, .35f, .00f, .20f, .30f, .10f, .45f, .30f, .15f, .50f, .40f }, 0.20f, 2, 1, false },
-    { "TARANTULA", "decoupe rythmique : stutters, sauts d'octave, accents",
-      { .40f, .50f, .00f, .35f, .00f, .30f, .00f, .00f, .00f, .75f, .35f, .10f, .65f, .15f, .80f }, 0.20f, 0, 0, false },
-    { "DREAM CATCHER", "aerien : octave haute, glisses, echos qui montent",
-      { .20f, .35f, .00f, .10f, .30f, .55f, .70f, .30f, .60f, .00f, .20f, .55f, .78f, .90f, .10f }, 0.00f, 1, 0, false },
-    { "JUMPING SPIDER", "intervalles elargis, bonds et ornements joueurs",
-      { .50f, .90f, .15f, .55f, .15f, .00f, .00f, .55f, .15f, .25f, .00f, .15f, .70f, .20f, .60f }, 0.05f, 0, 0, false },
-    { "MIRROR WEB", "contour inverse, reverse et echos descendants",
-      { .15f, .50f, 1.0f, .10f, .20f, .30f, .30f, .10f, .30f, .15f, .80f, .35f, .50f, .45f, .30f }, 0.00f, 0, 2, false },
-    { "CATHEDRAL", "organum : quintes et octaves, glisses lents, immense",
-      { .10f, .30f, .00f, .00f, .50f, .70f, .15f, .00f, .70f, .00f, .10f, .25f, .45f, 1.0f, .10f }, 0.00f, 5, 2, false },
-    { "VENOM", "agressif : secondes et quartes, grain, stutter",
-      { .55f, .70f, .30f, .30f, .50f, .40f, .20f, .30f, .10f, .50f, .30f, .25f, .80f, .20f, .90f }, 0.60f, 3, 5, false },
-    { "INFINITE THREAD", "tous les fils tisses ensemble : une toile dense et fixe",
-      { .50f, .65f, .40f, .30f, .35f, .30f, .50f, .35f, .35f, .25f, .30f, .60f, .55f, .60f, .40f }, 0.05f, 0, 2, false },
+    { "SILK", "velours : tierce discrete, plate douce et chorus leger",
+      { .25f, .50f, .00f, .05f, .22f, .00f, .00f, .25f, .25f, .00f, .00f, .12f, .58f, .25f, .30f }, 0, 0, 0, false,
+      { -0.5f, .35f, 4,  1, .28f, 0, .06f, .35f,   0, 1, 0, 0,   .8f, 1.6f, .55f, 12, 0, .24f,   0, 0,   50, 10500, 0,   1.0f } },
+    { "ORB WEAVER", "harmonies larges : tierces et sixtes, ensemble, hall et ping-pong",
+      { .30f, .50f, .00f, .00f, .60f, .40f, .50f, .15f, .20f, .00f, .00f, .20f, .60f, .40f, .25f }, 0, 1, 4, false,
+      { 0.5f, .90f, 10,  2, .10f, 0, 0, .65f,   2, 1.5f, .30f, .20f,   1.5f, 3.5f, .30f, 25, 0, .34f,   0, 0,   70, 18500, 0,   1.45f } },
+    { "BLACK WIDOW", "miroir sombre : voix plus grave, bande saturee, echos lourds",
+      { .30f, .60f, .85f, .30f, .30f, .35f, .00f, .20f, .30f, .10f, .45f, .30f, .15f, .50f, .40f }, 0, 2, 1, false,
+      { -3.0f, .50f, 6,  1, .40f, 0, .25f, 0,   3, 1, .45f, .25f,   1.4f, 4.0f, .70f, 30, 0, .32f,   0, 0,   80, 6000, 0,   1.0f } },
+    { "TARANTULA", "decoupe rythmique : stutters, gate en doubles-croches, punch",
+      { .40f, .50f, .00f, .35f, .00f, .30f, .00f, .00f, .00f, .75f, .35f, .10f, .65f, .15f, .80f }, 0, 0, 0, false,
+      { 0.0f, .30f, 0,   2, .35f, 0, 0, 0,   0, 1, 0, 0,   .5f, .8f, .40f, 5, 0, .14f,   1, .85f,   120, 14000, 0,   .9f } },
+    { "DREAM CATCHER", "aerien : shimmer qui monte, echos en spirale, tres large",
+      { .20f, .35f, .00f, .10f, .30f, .55f, .70f, .30f, .60f, .00f, .20f, .55f, .78f, .90f, .10f }, 0, 1, 0, false,
+      { 2.0f, .70f, 7,   0, 0, 0, 0, .30f,   1, .75f, .45f, .35f,   2.0f, 6.5f, .25f, 40, .35f, .45f,   0, 0,   150, 18500, 0,   1.55f } },
+    { "JUMPING SPIDER", "bondissant : sauts d'octave, ping-pong pointe, voix claire",
+      { .50f, .90f, .15f, .55f, .15f, .00f, .00f, .55f, .15f, .25f, .00f, .15f, .70f, .20f, .60f }, 0, 0, 0, false,
+      { 2.5f, .40f, 0,   2, .18f, 0, 0, 0,   2, .75f, .50f, .38f,   .6f, 1.0f, .25f, 8, 0, .12f,   0, 0,   160, 19500, 0,   1.45f } },
+    { "MIRROR WEB", "contour inverse : reverse, bande qui ondule, image stereo miroir",
+      { .15f, .50f, 1.0f, .10f, .20f, .30f, .30f, .10f, .30f, .15f, .80f, .35f, .50f, .45f, .30f }, 0, 0, 2, false,
+      { -1.0f, .95f, 12, 1, .20f, 0, .32f, .30f,   3, .5f, .45f, .28f,   1.0f, 2.2f, .55f, 20, 0, .26f,   0, 0,   150, 9000, 0,   1.8f } },
+    { "CATHEDRAL", "organum : quintes et octaves dans une nef immense qui gonfle",
+      { .10f, .30f, .00f, .00f, .50f, .70f, .15f, .00f, .70f, .00f, .10f, .25f, .45f, 1.0f, .10f }, 0, 5, 2, false,
+      { 0.0f, .60f, 6,   0, 0, 0, 0, .20f,   0, 1, 0, 0,   2.5f, 12.0f, .45f, 60, .12f, .60f,   4, .45f,   50, 12000, 0,   1.5f } },
+    { "VENOM", "agressif : fuzz, bits ecrases, filtre qui balaie, decoupe",
+      { .55f, .70f, .30f, .30f, .50f, .40f, .20f, .30f, .10f, .50f, .30f, .25f, .80f, .20f, .90f }, 0, 3, 5, false,
+      { -2.0f, .40f, 0,  3, .70f, .35f, 0, 0,   2, 1, .30f, .15f,   .5f, 1.0f, .40f, 5, 0, .10f,   3, .60f,   90, 18000, .60f,   1.0f } },
+    { "INFINITE THREAD", "tous les fils tisses : spirale, shimmer, pompe, une toile dense",
+      { .50f, .65f, .40f, .30f, .35f, .30f, .50f, .35f, .35f, .25f, .30f, .60f, .55f, .60f, .40f }, 0, 0, 2, false,
+      { 0.0f, .60f, 8,   1, .12f, 0, .10f, .35f,   1, .75f, .50f, .30f,   1.8f, 5.0f, .35f, 30, .15f, .40f,   2, .30f,   80, 16000, 0,   1.4f } },
+    // --- nouveaux presets Spider II ---
+    { "PHANTOM VEIL", "fantome : voix grave et voilee, octave basse, brume glacee",
+      { .20f, .50f, .00f, .20f, .00f, .50f, .20f, .10f, .55f, .00f, .25f, .40f, .30f, .90f, .15f }, 0, 0, 1, false,
+      { -5.0f, .80f, 10, 1, .10f, 0, .20f, .40f,   3, 1.5f, .50f, .25f,   2.2f, 8.0f, .60f, 80, 0, .55f,   0, 0,   60, 7000, 0,   1.6f } },
+    { "DUST WEAVER", "lo-fi trap : bande usee qui ondule, bits ecrases, son etroit et chaud",
+      { .30f, .50f, .00f, .00f, .00f, .00f, .00f, .30f, .20f, .10f, .00f, .20f, .35f, .25f, .50f }, 0, 0, 0, false,
+      { 0.0f, 0, 0,      1, .45f, .50f, .55f, 0,   3, .75f, .35f, .20f,   .7f, 1.5f, .70f, 10, 0, .20f,   0, 0,   120, 5500, 0,   .7f } },
+    { "CRYSTAL NEST", "cristal : eclats d'octave aigus, echos inverses scintillants",
+      { .30f, .50f, .00f, .60f, .00f, .60f, .70f, .40f, .20f, .00f, .60f, .45f, .85f, .70f, .30f }, 0, 0, 0, false,
+      { 4.0f, .70f, 6,   0, 0, 0, 0, .15f,   2, .25f, .55f, .30f,   .9f, 2.5f, .05f, 10, .60f, .32f,   0, 0,   400, 20000, 0,   1.6f } },
+    { "PULSE TRAP", "pompe sidechain sur chaque temps, ping-pong serre, filtre qui respire",
+      { .35f, .55f, .00f, .20f, .25f, .00f, .00f, .15f, .10f, .30f, .00f, .30f, .60f, .30f, .90f }, 0, 1, 0, false,
+      { 0.0f, .50f, 5,   2, .30f, 0, 0, .20f,   2, .5f, .35f, .25f,   .8f, 1.5f, .35f, 10, 0, .20f,   2, .90f,   80, 16000, .30f,   1.3f } },
+    { "ABYSS DWELLER", "abysses : quarte et octave basses, lampe saturee, reverb noire",
+      { .25f, .40f, .20f, .10f, .40f, .70f, .10f, .00f, .40f, .00f, .20f, .30f, .10f, .80f, .40f }, 0, 2, 1, false,
+      { -3.0f, .50f, 7,  2, .50f, .10f, 0, 0,   3, 1, .50f, .20f,   2.4f, 10.0f, .80f, 30, 0, .50f,   4, .30f,   40, 4500, 0,   1.2f } },
 };
 
 const Preset& Web::preset (int i) { return presets[juce::jlimit (0, numPresets - 1, i)]; }
@@ -69,8 +102,16 @@ void Engine::prepare (double sampleRate, int maxBlock)
     juce::dsp::ProcessSpec spec { sr, (juce::uint32) maxBlock, 1 };
     for (auto* f : { &lowL, &lowR, &highL, &highR }) { f->prepare (spec); f->reset(); }
     lastLight = -10.0f;
-    juce::dsp::ProcessSpec spec2 { sr, (juce::uint32) maxBlock, 2 };
-    reverb.prepare (spec2); reverb.reset();
+    fdn.prepare (sr); for (auto& v : fdnLast) v = -1.0f;
+    dly.init ((int) (2.2 * sr)); chor.init ((int) (0.06 * sr)); wowLine.init ((int) (0.06 * sr));
+    for (int c = 0; c < 2; ++c)
+    {
+        dlyLp[c].set (4500.0f, 0.6f, sr); dlyHp[c].set (180.0f, 0.6f, sr);
+        for (auto* f : { &dlyLp[c], &dlyHp[c], &toneHp[c], &toneLp[c], &sweepF[c] }) f->reset();
+        sat[c] = {}; dlySat[c] = {};
+    }
+    limiter.prepare (sr);
+    dlyTime = 0.0f; crushCount = 0; crushHold[0] = crushHold[1] = 0; lastLow = lastHigh = -1; sweepCounter = 0; shapeG = 1.0f;
     revCount = 0;
     levelIn = levelOut = 0.0f; levelGain = 1.0f; limEnv = 0.0f;
     setPresetImmediate (presetIdx);
@@ -83,7 +124,8 @@ void Engine::startMorphTo (int index)
     const auto& pr = preset (presetIdx);
     from = cur;
     for (int i = 0; i < NumParams; ++i) to[(size_t) i] = pr.p[i];
-    to[NumParams] = pr.grit;
+    to[NumParams] = 0.0f;
+    for (int i = 0; i < NumS; ++i) to[(size_t) (NumParams + 1 + i)] = pr.s[i];
     nextH1 = pr.h1Type; nextH2 = pr.h2Type; nextEvolve = pr.evolve;
     morphT = 0.0f;
     if (locked) applyLearned();   // nouvelle graine, meme gamme
@@ -390,6 +432,8 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
         morphT = juce::jmin (1.0f, morphT + (float) n / (float) (3.0 * sr));
         const float s = morphT * morphT * (3.0f - 2.0f * morphT);
         for (size_t i = 0; i < cur.size(); ++i) cur[i] = from[i] + (to[i] - from[i]) * s;
+        for (int i = 0; i < NumS; ++i)
+            if (isDiscrete (i)) cur[(size_t) (NumParams + 1 + i)] = morphT >= 0.5f ? to[(size_t) (NumParams + 1 + i)] : from[(size_t) (NumParams + 1 + i)];
         if (morphT >= 0.5f) { h1Type = nextH1; h2Type = nextH2; evolve = nextEvolve; }
     }
     morph = morphT;
@@ -417,17 +461,38 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
         auto hi = juce::dsp::IIR::Coefficients<float>::makeHighShelf (sr, 3500.0, 0.7f, juce::Decibels::decibelsToGain (tilt * 0.5f));
         lowL.coefficients = lo; lowR.coefficients = lo; highL.coefficients = hi; highR.coefficients = hi;
     }
-    const float grit = cur[NumParams];
-    const float gDrive = 1.0f + 5.0f * grit;
-    const float echoMix = eff[Echo] * 0.6f, echoFb = 0.3f + 0.35f * eff[Echo];
-    const double echoDelay = juce::jlimit (0.08 * sr, 1.2 * sr, spb * 0.75);
+    // --- Spider II : signature sonore du preset (ajustee par l'humeur des fils) ---
+    const float echoScale  = juce::jlimit (0.0f, 1.6f, eff[Echo]  / juce::jmax (0.05f, cur[Echo]));
+    const float spaceScale = juce::jlimit (0.0f, 1.6f, eff[Space] / juce::jmax (0.05f, cur[Space]));
+    const float fk = std::exp2 (snd (Formant) / 12.0f);
+    mainV.fk = (hasActive && ! active.voiced) ? 1.0f : fk;
+    h1V.fk = h2V.fk = fk;
+    const float spread = snd (Spread), detune = snd (Detune) / 100.0f;
+    const int driveMode = (int) std::lround (snd (DriveMode));
+    const float drive = snd (Drive), crush = snd (Crush), wow = snd (Wow), chorus = snd (Chorus);
+    const int delayMode = (int) std::lround (snd (DelayMode));
+    const float delayMix = snd (DelayMix) * echoScale, delayFb = snd (DelayFb);
+    const float revMixS = snd (RevMix) * spaceScale;
+    const int shaper = (int) std::lround (snd (Shaper));
+    const float shaperDepth = snd (ShaperDepth), sweep = snd (Sweep), width = snd (Width);
+    {
+        const float rs[5] = { snd (RevSize), snd (RevDecay), snd (RevDamp), snd (RevPre), snd (Shimmer) };
+        bool changed = false; for (int k = 0; k < 5; ++k) changed |= std::abs (rs[k] - fdnLast[k]) > 1.0e-3f;
+        if (changed) { fdn.setParams (rs[0], rs[1], rs[2], rs[3], rs[4]); for (int k = 0; k < 5; ++k) fdnLast[k] = rs[k]; }
+        if (std::abs (snd (LowCut) - lastLow) > 0.5f)  { lastLow = snd (LowCut);  for (auto& f : toneHp) f.set (lastLow, 0.7f, sr); }
+        if (std::abs (snd (HighCut) - lastHigh) > 5.0f) { lastHigh = snd (HighCut); for (auto& f : toneLp) f.set (lastHigh, 0.7f, sr); }
+    }
+    const double ppqOut0 = ppq - (double) (L + Fx::Limiter::look) / spb;     // position musicale de ce qu'on entend
+    const float panL1 = std::sqrt (0.5f * (1.0f + spread)), panR1 = std::sqrt (0.5f * (1.0f - spread));   // harmonie I a gauche
+    const float echoMix = delayMode == 1 ? delayMix * 1.4f : 0.0f, echoFb = delayMode == 1 ? delayFb : 0.4f;
+    const double echoDelay = juce::jlimit (0.08 * sr, 1.2 * sr, spb * (double) juce::jmax (0.25f, snd (DelayBeats)));
     const int revChunk = (int) juce::jlimit (0.06 * sr, 0.9 * sr, spb / 2.0);
     const float revMix = eff[Reverse] * 0.45f;
     const float kA = 1.0f - std::exp (-1.0f / (0.004f * (float) sr));
     const float kH = 1.0f - std::exp (-1.0f / (0.012f * (float) sr));
     float echoLp[2] = { echoLpState[0], echoLpState[1] };
     const float lpK = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 5000.0f / (float) sr);
-    const int fade = 64;
+    const int fade = (int) (0.003 * sr);   // fondu de 3 ms sur chaque repetition du stutter
     double blockInPow = 0.0;
 
     // --- voix d'accords (polyphonique) : calculee pour le bloc, alignee sur la sortie ---
@@ -493,8 +558,8 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
             }
         }
         if (graceEnd > 0 && outIdx >= graceEnd) { mainV.setTarget (active.mainSemis); mainV.glideK = 1.0f - std::exp (-1.0f / (0.015f * (float) sr)); graceEnd = 0; }
-        if (h1Start >= 0 && outIdx >= h1Start) { h1V.setTarget (active.h1Semis); h1V.logR = active.h1Semis / 12.0f; h1V.mix = 1.0f; h1Target = active.h1Gain; h1Start = -1; }
-        if (h2Start >= 0 && outIdx >= h2Start) { h2V.setTarget (active.h2Semis); h2V.logR = active.h2Semis / 12.0f; h2V.mix = 1.0f; h2Target = active.h2Gain; h2Start = -1; }
+        if (h1Start >= 0 && outIdx >= h1Start) { h1V.setTarget (active.h1Semis + detune); h1V.logR = (active.h1Semis + detune) / 12.0f; h1V.mix = 1.0f; h1Target = active.h1Gain; h1Start = -1; }
+        if (h2Start >= 0 && outIdx >= h2Start) { h2V.setTarget (active.h2Semis - detune); h2V.logR = (active.h2Semis - detune) / 12.0f; h2V.mix = 1.0f; h2Target = active.h2Gain; h2Start = -1; }
 
         // --- voix ---
         float ml, mr, al = 0, ar = 0, bl = 0, br = 0;
@@ -507,13 +572,20 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
         chordTarget = (chordOn && hasActive && ! active.voiced) ? juce::jmax (eff[Harmony1], eff[Harmony2]) * 0.6f : 0.0f;
         chordGain += kH * (chordTarget - chordGain);
         const float cl = chordOn ? chOut[0][(size_t) i] * chordGain : 0.0f, cr = chordOn ? chOut[1][(size_t) i] * chordGain : 0.0f;
-        float vl = (ml + al * h1Gain * 0.8f + bl * h2Gain * 0.8f + cl) * accent;
-        float vr = (mr + ar * h1Gain * 0.8f + br * h2Gain * 0.8f + cr) * accent;
+        const float hs = 0.8f * 1.41421356f;
+        float vl = (ml + al * h1Gain * hs * panL1 + bl * h2Gain * hs * panR1 + cl) * accent;
+        float vr = (mr + ar * h1Gain * hs * panR1 + br * h2Gain * hs * panL1 + cr) * accent;
 
         // --- stutter ---
         if (stutState == 1)
         {
             stutBuf.setSample (0, stutPos, vl); stutBuf.setSample (1, stutPos, vr);
+            if (stutRepeatsLeft > 0)
+            {
+                // le son vivant s'efface juste avant la 1re repetition (qui demarre en fondu)
+                const float g = juce::jmin (1.0f, (float) (stutLen - 1 - stutPos) / (float) fade);
+                vl *= g; vr *= g;
+            }
             if (++stutPos >= stutLen) { stutState = stutRepeatsLeft > 0 ? 2 : 0; stutPos = 0; }
         }
         else if (stutState == 2)
@@ -522,7 +594,13 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
             const float env = juce::jmin (1.0f, juce::jmin ((float) stutPos, (float) (stutLen - 1 - stutPos)) / (float) fade);
             vl = stutBuf.getSample (0, idx) * env;
             vr = stutBuf.getSample (1, idx) * env;
-            if (++stutPos >= stutLen) { stutPos = 0; ++stutRepeatIdx; if (--stutRepeatsLeft <= 0) stutState = 0; }
+            if (++stutPos >= stutLen) { stutPos = 0; ++stutRepeatIdx; if (--stutRepeatsLeft <= 0) { stutState = 0; stutRecover = fade; } }
+        }
+        else if (stutRecover > 0)
+        {
+            // retour au son vivant en fondu (la derniere repetition finit a zero)
+            const float g = 1.0f - (float) stutRecover / (float) fade;
+            vl *= g; vr *= g; --stutRecover;
         }
 
         // --- reverse delay (le passe joue a l'envers) ---
@@ -573,34 +651,117 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
         if (testMainOnly) { yl = ml; yr = mr; }
         if (testChordOnly) { yl = chordOn ? chOut[0][(size_t) i] : 0.0f; yr = chordOn ? chOut[1][(size_t) i] : 0.0f; }
 
+        if (! testMainOnly && ! testChordOnly)
+        {
+            const double mpos = ppqOut0 + (double) i / spb;
+            // --- 1. saturation (bande / lampe / fuzz), sans repliement ---
+            if (driveMode > 0 && drive > 0.005f)
+            {
+                const float pre = driveMode == 1 ? 1.0f + 3.0f * drive : driveMode == 2 ? 1.0f + 6.0f * drive : 1.0f + 22.0f * drive;
+                const float bias = driveMode == 2 ? 0.25f * drive : 0.0f;        // lampe : harmoniques paires
+                const float wet = juce::jmin (1.0f, drive * 1.6f);
+                float* io[2] = { &yl, &yr };
+                for (int c = 0; c < 2; ++c)
+                {
+                    float y = sat[c].tick (*io[c] * pre + bias) - std::tanh (bias);
+                    y /= std::tanh (juce::jmin (pre, 3.0f)) * (driveMode == 3 ? 1.0f : 1.15f);
+                    if (driveMode == 3) y = juce::jlimit (-0.9f, 0.9f, y * 1.4f);
+                    *io[c] += wet * (y - *io[c]);
+                }
+            }
+            // --- 2. lo-fi : bits ecrases + echantillonnage reduit ---
+            if (crush > 0.005f)
+            {
+                const float holdN = 1.0f + crush * 9.0f;
+                const float q = std::exp2 (15.0f - crush * 11.0f);
+                if ((crushCount += 1.0f) >= holdN)
+                {
+                    crushCount -= holdN;
+                    crushHold[0] = std::round (yl * q) / q; crushHold[1] = std::round (yr * q) / q;
+                }
+                yl += crush * (crushHold[0] - yl); yr += crush * (crushHold[1] - yr);
+            }
+            // --- 3. bande qui ondule (wow & flutter), calee sur la mesure ---
+            wowLine.push (yl, yr);
+            if (wow > 0.005f)
+            {
+                const float m = 0.0025f * (1.0f + std::sin (Fx::twoPi * (float) std::fmod (mpos / 4.0, 1.0)))
+                              + 0.0005f * std::sin (Fx::twoPi * (float) std::fmod (mpos * 6.3, 1.0));
+                float a2, b2; wowLine.read ((0.002f + wow * m) * (float) sr, a2, b2);
+                yl = a2; yr = b2;
+            }
+            // --- 4. chorus / ensemble ---
+            chor.push (yl, yr);
+            if (chorus > 0.005f)
+            {
+                const float ph = (float) std::fmod (mpos * 0.5, 1.0);
+                float a1, b1, a2, b2, d0, d1;
+                chor.read ((0.009f + 0.0035f * std::sin (Fx::twoPi * ph)) * (float) sr, a1, d0);
+                chor.read ((0.011f + 0.0035f * std::sin (Fx::twoPi * ph + 2.1f)) * (float) sr, d1, b1);
+                chor.read ((0.014f + 0.0030f * std::sin (Fx::twoPi * ph + 4.2f)) * (float) sr, a2, b2);
+                yl = yl * (1.0f - 0.45f * chorus) + chorus * 0.6f * (a1 + 0.5f * b2);
+                yr = yr * (1.0f - 0.45f * chorus) + chorus * 0.6f * (b1 + 0.5f * a2);
+            }
+            // --- 5. delais : ping-pong (2) ou bande (3) ---
+            if (delayMode >= 2)
+            {
+                const float T = (float) juce::jlimit (0.05 * sr, 2.0 * sr, spb * (double) juce::jmax (0.125f, snd (DelayBeats)));
+                if (dlyTime <= 0.0f) dlyTime = T;
+                dlyTime += 0.0004f * (T - dlyTime);
+                float dl, dr;
+                const float tapeMod = delayMode == 3 ? 0.0004f * (float) sr * std::sin (Fx::twoPi * (float) std::fmod (mpos * 0.75, 1.0)) : 0.0f;
+                dly.read (dlyTime + tapeMod, dl, dr);
+                float fl = dlySat[0].tick (dlyLp[0].lp (dlyHp[0].hp (dl)) * 1.2f) / 1.2f;
+                float fr = dlySat[1].tick (dlyLp[1].lp (dlyHp[1].hp (dr)) * 1.2f) / 1.2f;
+                if (delayMode == 2) dly.push (0.5f * (yl + yr) + delayFb * fr, delayFb * fl);     // ping-pong
+                else                dly.push (yl + delayFb * fl, yr + delayFb * fr);              // bande stereo
+                yl += delayMix * dl * 1.2f; yr += delayMix * dr * 1.2f;
+            }
+            else dly.push (0.0f, 0.0f);
+            // --- 6. reverb (reseau de retards, shimmer) ---
+            if (revMixS > 0.002f || revWet[0] != 0.0f)
+            {
+                float wl, wr; fdn.tick (yl, yr, wl, wr);
+                revWet[0] = wl; revWet[1] = wr;
+                yl = yl * (1.0f - 0.25f * revMixS) + wl * revMixS * 1.3f;
+                yr = yr * (1.0f - 0.25f * revMixS) + wr * revMixS * 1.3f;
+                if (std::abs (wl) + std::abs (wr) < 1.0e-7f && revMixS <= 0.002f) revWet[0] = revWet[1] = 0.0f;
+            }
+            // --- 7. shaper rythmique (volume) ---
+            if (shaper > 0 && shaperDepth > 0.005f)
+            {
+                const float g = 1.0f - shaperDepth * (1.0f - Fx::shaperGain (shaper, mpos));
+                shapeG += 0.005f * (g - shapeG);       // fondu ~4.5 ms : pas de clic
+                yl *= shapeG; yr *= shapeG;
+            }
+            // --- 8. filtre qui balaie sur une mesure ---
+            if (sweep > 0.005f)
+            {
+                if ((sweepCounter++ & 15) == 0)
+                {
+                    const float u = 0.5f + 0.5f * std::sin (Fx::twoPi * (float) std::fmod (mpos / 4.0, 1.0) - 1.5708f);
+                    const float fc = 350.0f * std::exp2 (sweep * 5.5f * u + (1.0f - sweep) * 5.5f);
+                    for (auto& f : sweepF) f.set (fc, 1.4f, sr);
+                }
+                yl = sweepF[0].lp (yl); yr = sweepF[1].lp (yr);
+            }
+            // --- 9. couleur : coupe-bas, coupe-haut ---
+            yl = toneLp[0].lp (toneHp[0].hp (yl)); yr = toneLp[1].lp (toneHp[1].hp (yr));
+        }
+
         // --- lumiere ---
         yl = highL.processSample (lowL.processSample (yl));
         yr = highR.processSample (lowR.processSample (yr));
-        // --- grain ---
-        if (grit > 0.01f)
+        // --- largeur stereo ---
+        if (! testMainOnly && ! testChordOnly)
         {
-            const float tn = std::tanh (gDrive);
-            yl = yl + grit * (std::tanh (gDrive * yl) / tn - yl);
-            yr = yr + grit * (std::tanh (gDrive * yr) / tn - yr);
+            const float m = 0.5f * (yl + yr), d = 0.5f * (yl - yr) * width;
+            yl = m + d; yr = m - d;
         }
         L0[i] = yl; R0[i] = yr;
     }
     echoLpState[0] = echoLp[0]; echoLpState[1] = echoLp[1];
 
-    // --- espace ---
-    juce::dsp::Reverb::Parameters rp;
-    rp.roomSize = 0.55f + 0.42f * eff[Space];
-    rp.damping = 0.35f + 0.3f * (1.0f - eff[Light]);
-    rp.wetLevel = eff[Space] * 0.33f;
-    rp.dryLevel = 1.0f - eff[Space] * 0.25f;
-    rp.width = 1.0f;
-    reverb.setParameters (rp);
-    if (eff[Space] > 0.01f && ! testMainOnly && ! testChordOnly)
-    {
-        juce::dsp::AudioBlock<float> blk (buf.getArrayOfWritePointers(), (size_t) nch, (size_t) n);
-        juce::dsp::ProcessContextReplacing<float> ctx (blk);
-        reverb.process (ctx);
-    }
     // --- meme volume qu'a l'entree (mesure lente ~2 s) ---
     {
         double po = 0.0;
@@ -618,16 +779,13 @@ void Engine::process (juce::AudioBuffer<float>& buf, int64_t firstSample, double
         if (! testMainOnly && ! testChordOnly)
             for (int ch = 0; ch < nch; ++ch) buf.applyGainRamp (ch, 0, n, g0, levelGain);
     }
-    // --- limiteur de securite (-1 dB, relache 80 ms) ---
-    const float limRel = std::exp (-1.0f / (0.08f * (float) sr));
+    // --- limiteur avec anticipation (-1 dB) : les cretes sont adoucies sans distorsion ---
     for (int i = 0; i < n; ++i)
     {
         float a = std::isfinite (L0[i]) ? L0[i] : 0.0f, b = std::isfinite (R0[i]) ? R0[i] : 0.0f;
-        const float pk = juce::jmax (std::abs (a), std::abs (b));
-        limEnv = juce::jmax (pk, limEnv * limRel);
-        const float g = limEnv > 0.89f ? 0.89f / limEnv : 1.0f;
-        L0[i] = a * g;
-        if (nch > 1) R0[i] = b * g;
+        limiter.tick (a, b, 0.89f);
+        L0[i] = a;
+        if (nch > 1) R0[i] = b;
     }
-    cyclePos = (float) std::fmod (std::fmod (ppq - (double) L / spb, 16.0) + 16.0, 16.0) / 16.0f;
+    cyclePos = (float) std::fmod (std::fmod (ppq - (double) latency() / spb, 16.0) + 16.0, 16.0) / 16.0f;
 }

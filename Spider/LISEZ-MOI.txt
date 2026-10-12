@@ -17,6 +17,21 @@ CONSEILS
   (octaves, rythme, echos, espace) pour rester juste.
 - Les notes fortes (premier temps de chaque mesure) restent en place :
   le deroule de ta melodie est garde.
+- SPIDER II (v2.0) : version finale.
+  * 15 presets (5 nouveaux, marques "II") : PHANTOM VEIL, DUST WEAVER,
+    CRYSTAL NEST, PULSE TRAP, ABYSS DWELLER.
+  * Chaque preset a sa signature sonore, travaillee comme un vrai plugin
+    d'effets :
+      - reverb a reseau de retards (8 lignes), avec shimmer dans la boucle
+      - delais ping-pong et bande (filtres et satures dans le retour)
+      - saturation bande / lampe / fuzz sans repliement (ADAA)
+      - lo-fi : bits ecrases, bande qui ondule (wow & flutter)
+      - chorus / ensemble, harmonies placees en stereo et micro-desaccordees
+      - formants (voix plus grave ou plus claire sans changer la note)
+      - motifs rythmiques (gate, pompe sidechain, swell) et filtre qui balaie
+      - limiteur avec anticipation : aucune crete ecretee
+  * Tout est cale sur le tempo du projet : la lecture et l'export restent
+    identiques.
 - v1.3 : mecanisme professionnel.
   * La toile apprise (gamme, registre, densite, volume) est SAUVEGARDEE dans
     le projet FL : l'export sonne exactement comme la lecture, et un projet
@@ -43,20 +58,25 @@ CONSEILS
   4 mesures, repete a l'identique. Harmonies, echo, reverse, espace et
   lumiere sont constants.
 - Changer de preset retisse la toile (fondu de 3 s), puis tout redevient fixe.
-- Spider ajoute 100 ms de latence, compensee automatiquement par FL Studio.
+- Spider ajoute environ 101 ms de latence, compensee automatiquement par FL Studio.
 - Le volume de sortie est aligne sur celui d'entree.
 
-LES 10 PRESETS
-01 SILK            ameliore en douceur : ornements fins, une tierce discrete
-02 ORB WEAVER      tisse des harmonies : tierces et sixtes arpegees
-03 BLACK WIDOW     la melodie en miroir, sombre, avec reverse
-04 TARANTULA       decoupe rythmique : stutters, sauts d'octave, accents
-05 DREAM CATCHER   aerien : octave haute, glisses, echos qui montent
-06 JUMPING SPIDER  intervalles elargis, bonds et ornements joueurs
-07 MIRROR WEB      contour inverse, reverse et echos descendants
-08 CATHEDRAL       organum : quintes et octaves, glisses lents, immense
-09 VENOM           agressif : secondes et quartes, grain, stutter
-10 INFINITE THREAD tous les fils tisses ensemble : une toile dense et fixe
+LES 15 PRESETS
+01 SILK            velours : tierce discrete, plate douce et chorus leger
+02 ORB WEAVER      harmonies larges : tierces et sixtes, ensemble, hall et ping-pong
+03 BLACK WIDOW     miroir sombre : voix plus grave, bande saturee, echos lourds
+04 TARANTULA       decoupe rythmique : stutters, gate en doubles-croches, punch
+05 DREAM CATCHER   aerien : shimmer qui monte, echos en spirale, tres large
+06 JUMPING SPIDER  bondissant : sauts d'octave, ping-pong pointe, voix claire
+07 MIRROR WEB      contour inverse : reverse, bande qui ondule, stereo miroir
+08 CATHEDRAL       organum : quintes et octaves dans une nef immense qui gonfle
+09 VENOM           agressif : fuzz, bits ecrases, filtre qui balaie, decoupe
+10 INFINITE THREAD tous les fils tisses : spirale, shimmer, pompe, toile dense
+11 PHANTOM VEIL    fantome : voix grave et voilee, octave basse, brume glacee
+12 DUST WEAVER     lo-fi trap : bande usee, bits ecrases, son etroit et chaud
+13 CRYSTAL NEST    cristal : eclats d'octave aigus, echos scintillants
+14 PULSE TRAP      pompe sidechain, ping-pong serre, filtre qui respire
+15 ABYSS DWELLER   abysses : quarte et octave basses, lampe saturee, reverb noire
 
 L'HUMEUR
 En majeur Spider eclaircit, ornemente vers le haut et fait monter ses
